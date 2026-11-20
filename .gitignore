@@ -1,0 +1,28 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environments
+venv/
+.venv/
+env/
+ENV/
+
+# Temporary and capture files
+captures/
+*.log
+data/playwright_profiles/
+data/code_backups/
+data/docling_exports/
+
+# IDE specific
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Secrets and environment variables
+.env
+.env.*
+*.key

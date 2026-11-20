@@ -1,0 +1,37 @@
+[
+  {
+    "name": "বাবা",
+    "phone": "01711000001",
+    "relation": "Father"
+  },
+  {
+    "name": "মা",
+    "phone": "01711000002",
+    "relation": "Mother"
+  },
+  {
+    "name": "ভাই",
+    "phone": "01711000003",
+    "relation": "Brother"
+  },
+  {
+    "name": "বোন",
+    "phone": "01711000004",
+    "relation": "Sister"
+  },
+  {
+    "name": "বন্ধু",
+    "phone": "01711000005",
+    "relation": "Friend"
+  },
+  {
+    "name": "Tanvir",
+    "phone": "01812345678",
+    "relation": "Friend"
+  },
+  {
+    "name": "Rahim",
+    "phone": "01912345678",
+    "relation": "Colleague"
+  }
+]

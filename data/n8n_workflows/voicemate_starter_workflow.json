@@ -1,0 +1,76 @@
+{
+  "name": "VoiceMate - Universal AI Workflow Bridge",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "voicemate-action",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        200,
+        300
+      ],
+      "id": "node-webhook-trigger",
+      "name": "VoiceMate Webhook Trigger"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Extract command and route intent\nconst cmd = ($json.command || '').toLowerCase();\nlet action = 'general';\nlet reply = 'অটোমেশন ফ্লো সফলভাবে সম্পন্ন হয়েছে।';\n\nif (cmd.includes('email') || cmd.includes('ইমেইল')) {\n    action = 'email';\n    reply = 'আপনার ইমেইল পাঠানোর টাস্ক প্রস্তুত করা হয়েছে।';\n} else if (cmd.includes('notion') || cmd.includes('নোশন')) {\n    action = 'notion';\n    reply = 'নোশন ওয়ার্কস্পেসে ডাটা সংরক্ষিত হয়েছে।';\n} else if (cmd.includes('sheet') || cmd.includes('শিট')) {\n    action = 'sheets';\n    reply = 'গুগল শিটে নতুন রো যুক্ত করা হয়েছে।';\n}\n\nreturn { json: { action, spoken_reply: reply, original_command: cmd } };"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        300
+      ],
+      "id": "node-intent-router",
+      "name": "AI Intent Router"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"status\": \"success\",\n  \"spoken_reply\": $json.spoken_reply,\n  \"action\": $json.action\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        700,
+        300
+      ],
+      "id": "node-respond-webhook",
+      "name": "Respond to VoiceMate"
+    }
+  ],
+  "connections": {
+    "VoiceMate Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "AI Intent Router",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Intent Router": {
+      "main": [
+        [
+          {
+            "node": "Respond to VoiceMate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

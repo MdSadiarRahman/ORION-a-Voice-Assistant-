@@ -1,0 +1,9 @@
+{
+  "allowed_apps": {},
+  "settings": {
+    "auto_listen": true,
+    "battery_notifications": true,
+    "speech_rate": 160,
+    "wake_phrase": "হ্যালো"
+  }
+}

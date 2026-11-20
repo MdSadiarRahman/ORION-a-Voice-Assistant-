@@ -1,0 +1,45 @@
+# Core Voice & Speech Recognition
+SpeechRecognition>=3.10.0
+pyttsx3>=2.90
+
+# Desktop OS Automation & Hardware Control
+pyautogui>=0.9.54
+pyperclip>=1.8.2
+psutil>=5.9.8
+
+# Vision & Camera Processing
+pillow>=10.0.0
+opencv-python>=4.8.0
+pytesseract>=0.3.10
+
+# Autonomous Browser Agent (Browser-Use 1.0 Dependencies)
+# Local repository: ../VoiceMate Repo Help/browser-use
+pydantic>=2.14.3
+pydantic-ai-slim>=2.66.0
+browser-harness>=0.1.13
+genai-prices>=0.2.1
+python-dotenv>=1.2.4
+# Deterministic Web Driver & Automation (Playwright Python)
+# Local repository: ../VoiceMate Repo Help/playwright-python
+playwright>=1.40.0
+greenlet>=3.0.0
+
+# Document Intelligence & PDF Engine (PyMuPDF)
+# Local repository: ../VoiceMate Repo Help/PyMuPDF
+pymupdf>=1.24.0
+
+# Universal Multimodal Document Intelligence & RAG Chunking (Docling)
+# Local repository: ../VoiceMate Repo Help/docling
+docling>=2.0.0
+docling-core>=2.0.0
+
+# High-Performance API Gateway & WebSocket Server (FastAPI)
+# Local repository: ../VoiceMate Repo Help/fastapi
+fastapi>=0.115.0
+uvicorn>=0.30.0
+starlette>=0.38.0
+
+# Master Brain Multi-Agent Orchestrator (LangGraph)
+# Local repository: ../VoiceMate Repo Help/langgraph
+langgraph>=0.2.0
+langchain-core>=0.3.0

@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hospital Management Dashboard</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="dashboard-body">
+  <div class="sidebar">
+    <h2>🏥 হেলথকেয়ার পোর্টাল</h2>
+    <div class="tab-btn active" onclick="switchTab('admin')">⚙️ অ্যাডমিন ড্যাশবোর্ড</div>
+    <div class="tab-btn" onclick="switchTab('doctor')">👨‍⚕️ ডক্টরস পোর্টাল</div>
+    <div class="tab-btn" onclick="switchTab('patient')">🧑‍🦱 পেশেন্ট পোর্টাল</div>
+    <a href="index.html" class="sidebar-back">⬅ হোম পেজে যান</a>
+  </div>
+
+  <main class="dashboard-content">
+    <!-- Admin View -->
+    <div id="tab-admin" class="tab-pane active">
+      <h1>হাসপাতাল অ্যাডমিনিস্ট্রেশন প্যানেল</h1>
+      <div class="stats-row">
+        <div class="stat-box"><span id="total-patients">12</span><p>নিবন্ধিত রোগী</p></div>
+        <div class="stat-box"><span id="total-doctors">8</span><p>সক্রিয় ডাক্তার</p></div>
+        <div class="stat-box"><span id="total-appointments">5</span><p>আজকের অ্যাপয়েন্টমেন্ট</p></div>
+      </div>
+      <div class="table-container">
+        <h3>সাম্প্রতিক রোগী তালিকা</h3>
+        <table class="data-table">
+          <thead>
+            <tr><th>রোগীর নাম</th><th>বয়স</th><th>বিভাগ</th><th>স্ট্যাটাস</th></tr>
+          </thead>
+          <tbody id="patient-table-body">
+            <tr><td>তানভীর আহমেদ</td><td>৩২</td><td>কার্ডিওলজি</td><td><span class="badge badge-success">ভর্তি আছেন</span></td></tr>
+            <tr><td>নুসরাত জাহান</td><td>২৮</td><td>গাইনি</td><td><span class="badge badge-warning">পেন্ডিং টেস্ট</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Doctor View -->
+    <div id="tab-doctor" class="tab-pane">
+      <h1>চিকিৎসক কনসালটেশন কিউ</h1>
+      <div class="card">
+        <h3>রোগী দেখার তালিকা</h3>
+        <p>আজকের নির্ধারিত রোগীদের সিরিয়াল ও প্রেসক্রিপশন নোট লিখুন।</p>
+        <ul id="doctor-queue" class="queue-list">
+          <li><strong>সিরিয়াল #০১:</strong> মো: রফিকুল ইসলাম (সময়: সকাল ১০:৩০) - রক্তচাপ পরীক্ষা</li>
+          <li><strong>সিরিয়াল #০২:</strong> ফাহিমা বেগম (সময়: সকাল ১১:১৫) - ফলো-আপ ভিজিট</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Patient View -->
+    <div id="tab-patient" class="tab-pane">
+      <h1>পেশেন্ট সেলফ-সার্ভিস ও সিরিয়াল বুকিং</h1>
+      <div class="card form-card">
+        <h3>নতুন অ্যাপয়েন্টমেন্ট বুক করুন</h3>
+        <form id="appointment-form" onsubmit="bookAppointment(event)">
+          <div class="form-group">
+            <label>আপনার নাম:</label>
+            <input type="text" id="p-name" required placeholder="নাম লিখুন">
+          </div>
+          <div class="form-group">
+            <label>মোবাইল নাম্বার:</label>
+            <input type="tel" id="p-phone" required placeholder="017xxxxxxxx">
+          </div>
+          <div class="form-group">
+            <label>ডাক্তার বা বিভাগ নির্বাচন করুন:</label>
+            <select id="p-dept">
+              <option>মেডিসিন ও জেনারেল হেলথ</option>
+              <option>কার্ডিওলজি (হৃদরোগ)</option>
+              <option>অর্থোপেডিকস (হাড় ও জোড়া)</option>
+            </select>
+          </div>
+          <button type="submit" class="btn-primary">সিরিয়াল নিশ্চিত করুন</button>
+        </form>
+        <div id="booking-success" class="alert-success" style="display:none; margin-top:15px;">
+          অভিনন্দন! আপনার অ্যাপয়েন্টমেন্ট সফলভাবে সংরক্ষিত হয়েছে।
+        </div>
+      </div>
+    </div>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>
