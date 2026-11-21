@@ -11,14 +11,45 @@ CONFIG_DIR = BASE_DIR / "config"
 CAPTURES_DIR = BASE_DIR / "captures"
 DOCS_DIR = BASE_DIR / "documents"
 
-# External Repository Integration Paths
-BROWSER_USE_REPO_DIR = BASE_DIR.parent / "VoiceMate Repo Help" / "browser-use"
-PYMUPDF_REPO_DIR = BASE_DIR.parent / "VoiceMate Repo Help" / "PyMuPDF"
-PLAYWRIGHT_REPO_DIR = BASE_DIR.parent / "VoiceMate Repo Help" / "playwright-python"
-OPENHANDS_REPO_DIR = BASE_DIR.parent / "VoiceMate Repo Help" / "OpenHands"
-AIDER_REPO_DIR = BASE_DIR.parent / "VoiceMate Repo Help" / "aider"
-DOCLING_REPO_DIR = BASE_DIR.parent / "VoiceMate Repo Help" / "docling"
-N8N_REPO_DIR = BASE_DIR.parent / "VoiceMate Repo Help" / "n8n"
+# External Repository Integration Paths Helper
+def resolve_repo_path(names: list, fallback: Path) -> Path:
+    r"""Dynamically resolves repository paths from D:\Git hub resources or fallback."""
+    candidate_roots = [
+        Path(r"D:\Git hub resources"),
+        BASE_DIR.parent / "Git hub resources",
+        BASE_DIR.parent / "VoiceMate Repo Help",
+    ]
+    for root in candidate_roots:
+        if not root.exists():
+            continue
+        for name in names:
+            patterns = [
+                root / f"{name}-main" / f"{name}-main",
+                root / f"{name}-master" / f"{name}-master",
+                root / name / name,
+                root / f"{name}-main",
+                root / f"{name}-master",
+                root / name,
+            ]
+            for p in patterns:
+                if p.exists():
+                    return p
+    return fallback
+
+BROWSER_USE_REPO_DIR = resolve_repo_path(["browser-use", "browser_use"], BASE_DIR.parent / "VoiceMate Repo Help" / "browser-use")
+PYMUPDF_REPO_DIR = resolve_repo_path(["PyMuPDF", "pymupdf"], BASE_DIR.parent / "VoiceMate Repo Help" / "PyMuPDF")
+PLAYWRIGHT_REPO_DIR = resolve_repo_path(["playwright-python", "playwright"], BASE_DIR.parent / "VoiceMate Repo Help" / "playwright-python")
+OPENHANDS_REPO_DIR = resolve_repo_path(["OpenHands", "openhands"], BASE_DIR.parent / "VoiceMate Repo Help" / "OpenHands")
+AIDER_REPO_DIR = resolve_repo_path(["aider"], BASE_DIR.parent / "VoiceMate Repo Help" / "aider")
+DOCLING_REPO_DIR = resolve_repo_path(["docling"], BASE_DIR.parent / "VoiceMate Repo Help" / "docling")
+N8N_REPO_DIR = resolve_repo_path(["n8n"], BASE_DIR.parent / "VoiceMate Repo Help" / "n8n")
+LANGGRAPH_REPO_DIR = resolve_repo_path(["langgraph"], BASE_DIR.parent / "VoiceMate Repo Help" / "langgraph")
+AGENCY_AGENTS_REPO_DIR = resolve_repo_path(["agency-agents", "agency_agents"], BASE_DIR.parent / "VoiceMate Repo Help" / "agency-agents")
+SOFTWARE_AGENT_SDK_REPO_DIR = resolve_repo_path(["software-agent-sdk"], BASE_DIR.parent / "VoiceMate Repo Help" / "software-agent-sdk")
+VOSK_API_REPO_DIR = resolve_repo_path(["vosk-api", "vosk"], BASE_DIR.parent / "VoiceMate Repo Help" / "vosk-api")
+TAKEOUT_ASSISTANT_REPO_DIR = resolve_repo_path(["takeout_assistant", "takeout-assistant"], BASE_DIR.parent / "VoiceMate Repo Help" / "takeout_assistant")
+OFFLINE_VOICE_AI_REPO_DIR = resolve_repo_path(["offline-voice-ai"], BASE_DIR.parent / "VoiceMate Repo Help" / "offline-voice-ai")
+
 PLAYWRIGHT_PROFILES_DIR = DATA_DIR / "playwright_profiles"
 PLAYWRIGHT_SCREENSHOTS_DIR = CAPTURES_DIR / "web_screenshots"
 CODER_BACKUPS_DIR = DATA_DIR / "code_backups"

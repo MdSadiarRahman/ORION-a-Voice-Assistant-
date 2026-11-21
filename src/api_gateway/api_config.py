@@ -7,8 +7,8 @@ import socket
 from pathlib import Path
 from typing import List
 
-# FastAPI Reference Repository Path
-FASTAPI_REPO_DIR = Path(r"E:\BAUST_3.2\Artificial Intelligence Sessional\VoiceMate Repo Help\fastapi")
+# FastAPI Server Configuration
+FASTAPI_REPO_DIR = Path(__file__).resolve().parent
 
 # Server Network Configuration
 API_HOST = os.getenv("VOICEMATE_API_HOST", "127.0.0.1")

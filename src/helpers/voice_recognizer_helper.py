@@ -246,19 +246,36 @@ class VoiceRecognizerHelper:
                     continue
 
                 if audio is not None and not self._stop_requested:
+                    text = None
+                    # 1. Primary: Online Google Speech Recognition (Bengali)
                     try:
                         text = recognizer.recognize_google(audio, language=self.language)
-                        if text:
-                            self.on_result(text)
                     except sr.UnknownValueError:
+                        # 2. Secondary: Online Google Speech Recognition (English)
                         try:
-                            text_en = recognizer.recognize_google(audio, language="en-US")
-                            if text_en:
-                                self.on_result(text_en)
+                            text = recognizer.recognize_google(audio, language="en-US")
                         except Exception:
                             pass
-                    except sr.RequestError as e:
-                        self.on_error(f"ভয়েস সার্ভিসে নেটওয়ার্ক ত্রুটি: {e}")
+                    except Exception:
+                        # Network dropped or timed out; will fall through to offline Vosk
+                        pass
+
+                    # 3. Tertiary: Offline Vosk Speech Recognition (Zero Network Required)
+                    if not text:
+                        try:
+                            raw_vosk = recognizer.recognize_vosk(audio)
+                            if raw_vosk:
+                                import json
+                                try:
+                                    parsed = json.loads(raw_vosk)
+                                    text = parsed.get("text", "").strip()
+                                except Exception:
+                                    text = str(raw_vosk).strip()
+                        except Exception:
+                            pass
+
+                    if text:
+                        self.on_result(text)
 
             except sr.WaitTimeoutError:
                 continue

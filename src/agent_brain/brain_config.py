@@ -3,11 +3,17 @@ VoiceMate Laptop Agent - LangGraph Central Brain Configuration.
 Settings for state persistence, cyclic retry limits, checkpointing, and intent routing.
 """
 import os
+import sys
 from pathlib import Path
 from typing import List, Dict, Any
 
-# LangGraph Reference Repository Path
-LANGGRAPH_REPO_DIR = Path(r"E:\BAUST_3.2\Artificial Intelligence Sessional\VoiceMate Repo Help\langgraph")
+try:
+    from config import LANGGRAPH_REPO_DIR
+except ImportError:
+    LANGGRAPH_REPO_DIR = Path(r"D:\Git hub resources\langgraph-main\langgraph-main")
+
+if LANGGRAPH_REPO_DIR.exists() and str(LANGGRAPH_REPO_DIR) not in sys.path:
+    sys.path.insert(0, str(LANGGRAPH_REPO_DIR))
 
 # Session & Checkpointing
 CHECKPOINT_DIR = Path("data") / "checkpoints"
