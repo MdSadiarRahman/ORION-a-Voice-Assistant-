@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ORION AI — Neural Command Center</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════
+     LAUNCH SPLASH OVERLAY
+══════════════════════════════════════════ -->
+<div id="splash" onclick="dismissSplash()">
+  <div class="splash-inner">
+    <div class="orbital-ring">
+      <div class="ring ring1"></div>
+      <div class="ring ring2"></div>
+      <div class="ring ring3"></div>
+      <div class="core-dot"></div>
+    </div>
+    <div class="splash-title">ORION AI</div>
+    <div class="splash-sub">INITIALIZING NEURAL CORE...</div>
+    <div class="splash-bar"><div class="splash-progress" id="splashProgress"></div></div>
+    <div class="splash-hint">Click to continue</div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     HUD HEADER
+══════════════════════════════════════════ -->
+<header class="hud-header">
+  <div class="hud-left">
+    <div class="hud-logo">
+      <span class="logo-icon">◈</span>
+      <span class="logo-text">ORION AI</span>
+    </div>
+    <div class="hud-status">
+      <span class="status-dot" id="statusDot"></span>
+      <span class="status-label" id="statusLabel">OFFLINE</span>
+    </div>
+  </div>
+  <div class="hud-center">
+    <span class="engine-badge" id="engineBadge">⚡ Detecting Engine...</span>
+  </div>
+  <div class="hud-right">
+    <div class="battery-widget">
+      <span class="battery-icon">🔋</span>
+      <span id="batteryPct">--%</span>
+      <span class="charge-icon" id="chargeIcon" style="display:none">⚡</span>
+    </div>
+    <button class="hud-btn" id="muteBtn" title="Toggle UI Sounds" onclick="toggleMute()">
+      <span id="muteIcon">🔊</span>
+    </button>
+    <button class="hud-btn service-btn" id="serviceBtn" onclick="toggleService()">
+      <span id="serviceIcon">▶</span> <span id="serviceTxt">START</span>
+    </button>
+  </div>
+</header>
+
+<!-- ══════════════════════════════════════════
+     PILL NAV TABS
+══════════════════════════════════════════ -->
+<nav class="pill-nav">
+  <button class="pill active" id="pill0" onclick="switchTab(0)">🧠 Neural Chat</button>
+  <button class="pill" id="pill1" onclick="switchTab(1)">🛠 Agent Toolkit</button>
+  <button class="pill" id="pill2" onclick="switchTab(2)">📡 Telemetry</button>
+</nav>
+
+<!-- ══════════════════════════════════════════
+     MAIN CONTENT
+══════════════════════════════════════════ -->
+<main class="main-content">
+
+  <!-- ─── TAB 0: NEURAL CHAT ─── -->
+  <section class="tab-panel active" id="tab0">
+    <!-- Orbital Visualizer -->
+    <div class="visualizer-wrap">
+      <canvas id="orbCanvas" width="700" height="180"></canvas>
+      <div class="orb-state-label" id="orbLabel">IDLE</div>
+    </div>
+
+    <!-- Quick Action Chips -->
+    <div class="chip-row">
+      <button class="chip" onclick="quickAction('কম্পিউটারের ব্যাটারি স্ট্যাটাস দেখাও')">🔋 ব্যাটারি স্ট্যাটাস</button>
+      <button class="chip" onclick="quickAction('সিস্টেম ইনফো দেখাও')">💻 সিস্টেম ইনফো</button>
+      <button class="chip" onclick="quickAction('আজকের আবহাওয়া কেমন?')">🌤 আবহাওয়া</button>
+      <button class="chip" onclick="quickAction('সময় এবং তারিখ বলো')">🕒 সময় ও তারিখ</button>
+      <button class="chip" onclick="quickAction('কাছাকাছি রেস্তোরাঁ খোঁজো')">🍽 রেস্তোরাঁ</button>
+    </div>
+
+    <!-- Chat Stream -->
+    <div class="chat-stream" id="chatStream">
+      <div class="chat-welcome">
+        <div class="welcome-icon">◈</div>
+        <div class="welcome-title">ORION AI সক্রিয়</div>
+        <div class="welcome-sub">Neural Command Center প্রস্তুত। আমাকে কিছু জিজ্ঞেস করুন।</div>
+      </div>
+    </div>
+
+    <!-- Input Dock -->
+    <div class="input-dock">
+      <button class="voice-btn" id="voiceBtn" onclick="toggleVoice()" title="ভয়েস ইনপুট">🎤</button>
+      <input class="cmd-input" id="cmdInput" type="text" placeholder="কমান্ড লিখুন বা মাইক্রোফোন ব্যবহার করুন..."
+             onkeydown="if(event.key==='Enter') sendCommand()">
+      <button class="send-btn" onclick="sendCommand()">➤</button>
+    </div>
+  </section>
+
+  <!-- ─── TAB 1: AGENT TOOLKIT ─── -->
+  <section class="tab-panel" id="tab1">
+    <div class="toolkit-grid">
+
+      <!-- Card: Browser Automation -->
+      <div class="mission-card" data-status="READY">
+        <div class="card-header">
+          <span class="card-icon">🌐</span>
+          <div>
+            <div class="card-title">Browser Automation</div>
+            <div class="card-desc">AI-powered web browsing, scraping &amp; task automation</div>
+          </div>
+          <span class="card-badge ready">READY</span>
+        </div>
+        <div class="card-actions">
+          <button class="tk-btn" onclick="runToolkit('browser_agent', 'URL বা টাস্ক লিখুন:')">🤖 Browser Agent</button>
+          <button class="tk-btn" onclick="runToolkit('web_automation', 'Automation টাস্ক লিখুন:')">⚙️ Web Automation</button>
+          <button class="tk-btn" onclick="runToolkit('product_research', 'পণ্যের নাম লিখুন:')">🔍 Product Research</button>
+        </div>
+      </div>
+
+      <!-- Card: Document Intelligence -->
+      <div class="mission-card" data-status="READY">
+        <div class="card-header">
+          <span class="card-icon">📄</span>
+          <div>
+            <div class="card-title">Document Intelligence</div>
+            <div class="card-desc">PDF/DOCX parsing, OCR, assignment solving &amp; summarization</div>
+          </div>
+          <span class="card-badge ready">READY</span>
+        </div>
+        <div class="card-actions">
+          <button class="tk-btn" onclick="runToolkit('assignment_solver', 'অ্যাসাইনমেন্ট বিষয় লিখুন:')">📝 Assignment Solver</button>
+          <button class="tk-btn" onclick="runToolkit('docling_converter', 'ফাইল পাথ লিখুন:')">🔄 Docling Converter</button>
+          <button class="tk-btn" onclick="runToolkit('doc_reader', 'ডকুমেন্ট পাথ লিখুন:')">📖 Doc Reader</button>
+        </div>
+      </div>
+
+      <!-- Card: Software Engineering -->
+      <div class="mission-card" data-status="READY">
+        <div class="card-header">
+          <span class="card-icon">💻</span>
+          <div>
+            <div class="card-title">Software Engineering</div>
+            <div class="card-desc">AI coding, website builder, developer canvas &amp; tools</div>
+          </div>
+          <span class="card-badge ready">READY</span>
+        </div>
+        <div class="card-actions">
+          <button class="tk-btn" onclick="runToolkit('website_builder', 'ওয়েবসাইট ধরন লিখুন:')">🌍 Website Builder</button>
+          <button class="tk-btn" onclick="runToolkit('ai_coder', 'কোডিং টাস্ক লিখুন:')">🤖 AI Coder</button>
+          <button class="tk-btn" onclick="runToolkit('developer_canvas', 'প্রজেক্ট বিবরণ লিখুন:')">🎨 Dev Canvas</button>
+        </div>
+      </div>
+
+      <!-- Card: Enterprise & API -->
+      <div class="mission-card" data-status="READY">
+        <div class="card-header">
+          <span class="card-icon">⚡</span>
+          <div>
+            <div class="card-title">Enterprise &amp; API</div>
+            <div class="card-desc">n8n workflows, API gateway, LangGraph brain orchestration</div>
+          </div>
+          <span class="card-badge ready">READY</span>
+        </div>
+        <div class="card-actions">
+          <button class="tk-btn" onclick="runToolkit('n8n_workflow', 'Workflow বিবরণ লিখুন:')">🔗 n8n Workflow</button>
+          <button class="tk-btn" onclick="runToolkit('api_gateway', 'API endpoint লিখুন:')">🔌 API Gateway</button>
+          <button class="tk-btn" onclick="runToolkit('langgraph_brain', 'LangGraph টাস্ক লিখুন:')">🧠 LangGraph Brain</button>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ─── TAB 2: TELEMETRY CONSOLE ─── -->
+  <section class="tab-panel" id="tab2">
+    <div class="tele-toolbar">
+      <span class="tele-title">📡 ORION TELEMETRY FEED</span>
+      <div class="tele-controls">
+        <input class="tele-search" id="teleSearch" type="text" placeholder="🔍 Filter logs..." oninput="filterLogs()">
+        <button class="tele-btn" id="autoScrollBtn" onclick="toggleAutoScroll()">⬇ Auto-Scroll ON</button>
+        <button class="tele-btn danger" onclick="clearLogs()">🗑 Clear</button>
+      </div>
+    </div>
+    <div class="tele-console" id="teleConsole"></div>
+  </section>
+
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>
