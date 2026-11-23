@@ -36,6 +36,7 @@ def resolve_repo_path(names: list, fallback: Path) -> Path:
                     return p
     return fallback
 
+SCRAPEGRAPH_AI_REPO_DIR = resolve_repo_path(["Scrapegraph-ai", "scrapegraphai", "Scrapegraph-ai-main"], BASE_DIR.parent / "VoiceMate Repo Help" / "Scrapegraph-ai")
 BROWSER_USE_REPO_DIR = resolve_repo_path(["browser-use", "browser_use"], BASE_DIR.parent / "VoiceMate Repo Help" / "browser-use")
 PYMUPDF_REPO_DIR = resolve_repo_path(["PyMuPDF", "pymupdf"], BASE_DIR.parent / "VoiceMate Repo Help" / "PyMuPDF")
 PLAYWRIGHT_REPO_DIR = resolve_repo_path(["playwright-python", "playwright"], BASE_DIR.parent / "VoiceMate Repo Help" / "playwright-python")

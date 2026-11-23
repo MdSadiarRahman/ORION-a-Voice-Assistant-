@@ -78,18 +78,30 @@ class PriceComparisonResult:
     cheapest_seller: str = ""
     summary_bn: str = ""
     summary_en: str = ""
+    min_price: float = 0.0
+    max_price: float = 0.0
+    avg_price: float = 0.0
+    country_market: str = "Bangladesh"
+    sources_checked: int = 0
+    formatted_report: str = ""
 
     def to_dict(self) -> Dict[str, Any]:
         return {
             "product_query": self.product_query,
             "total_listings": len(self.items),
+            "sources_checked": self.sources_checked or len(self.items),
+            "country_market": self.country_market,
+            "min_price": self.min_price or (self.cheapest_item.price if self.cheapest_item else 0.0),
+            "max_price": self.max_price or (self.highest_item.price if self.highest_item else 0.0),
+            "avg_price": self.avg_price,
+            "price_difference": self.price_difference,
             "cheapest_item": self.cheapest_item.to_dict() if self.cheapest_item else None,
             "highest_item": self.highest_item.to_dict() if self.highest_item else None,
-            "price_difference": self.price_difference,
             "spec_differences": self.spec_differences,
             "cheapest_seller": self.cheapest_seller,
             "summary_bn": self.summary_bn,
             "summary_en": self.summary_en,
+            "formatted_report": self.formatted_report,
             "items": [item.to_dict() for item in self.items]
         }
 

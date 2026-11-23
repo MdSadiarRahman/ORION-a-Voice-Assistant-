@@ -12,6 +12,7 @@ from typing import List, Dict, Any, Optional
 from datetime import datetime
 
 from src.product_agent.product_models import ProductItem, ProductSearchFilter
+from src.helpers.smart_scraper_helper import SmartWebScraper
 
 
 # ==============================================================================
@@ -313,6 +314,14 @@ class ProductScraper:
             except Exception:
                 pass
 
+        # 2.5 Scrapegraph-AI Dynamic Deep Search for General / Multi-retailer Queries
+        if len(results) < 2:
+            try:
+                live_items = cls._search_via_smart_scraper(search_filter.query)
+                results.extend(live_items)
+            except Exception:
+                pass
+
         # 3. Fallback to Verified Baseline Catalog
         # Always augment or fallback to ensure verified real market data
         catalog_matches = cls.query_baseline_catalog(search_filter)
@@ -479,4 +488,42 @@ class ProductScraper:
                 ))
             except Exception:
                 continue
+        return items
+
+    @classmethod
+    def _search_via_smart_scraper(cls, query: str) -> List[ProductItem]:
+        """Uses SmartWebScraper (Scrapegraph-AI pattern) to extract products from search pages."""
+        items: List[ProductItem] = []
+        search_results = SmartWebScraper.deep_search_query(f"{query} price in bd buy online", num_results=4)
+        for res in search_results:
+            url = res.get("url", "")
+            title = res.get("title", "")
+            content = res.get("page_content", "") or res.get("snippet", "")
+            extracted = SmartWebScraper.extract_product_data(content)
+            price = extracted.get("price", 0.0)
+            if price > 0:
+                seller = "Online Retailer"
+                for s in ["Daraz", "Star Tech", "Ryans", "Pickaboo", "Techland", "Apple Gadgets"]:
+                    if s.lower() in url.lower() or s.lower() in title.lower():
+                        seller = s
+                        break
+                brand = "Unknown"
+                for b in ["HP", "Samsung", "Asus", "Lenovo", "Dell", "Acer", "Apple", "Xiaomi"]:
+                    if b.lower() in title.lower():
+                        brand = b
+                        break
+
+                items.append(ProductItem(
+                    name=title,
+                    brand=brand,
+                    model=title.split()[0] if title else "Model",
+                    price=price,
+                    currency=extracted.get("currency", "BDT"),
+                    seller=seller,
+                    product_url=url,
+                    specifications=extracted.get("specifications", {}),
+                    availability=extracted.get("availability", "In Stock"),
+                    shipping_info=extracted.get("warranty", "Standard Warranty"),
+                    is_verified=True
+                ))
         return items

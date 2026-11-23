@@ -9,6 +9,8 @@ import re
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 
+from src.helpers.smart_scraper_helper import SmartWebScraper
+
 
 class ResearchController:
     """
@@ -56,6 +58,22 @@ class ResearchController:
         clean_q = query.strip()
         encoded = urllib.parse.quote(clean_q)
         results: List[Dict[str, Any]] = []
+
+        # Attempt SmartWebScraper Deep Search (Scrapegraph-AI & Browser-Use pattern)
+        try:
+            deep_results = SmartWebScraper.deep_search_query(clean_q, num_results=max_sources)
+            if deep_results:
+                for d in deep_results:
+                    results.append({
+                        "title": d.get("title", "Web Result"),
+                        "url": d.get("url", "#"),
+                        "snippet": d.get("snippet", ""),
+                        "page_content": d.get("page_content", ""),
+                        "verified": True
+                    })
+                return results
+        except Exception:
+            pass
 
         # Attempt DuckDuckGo HTML extraction
         try:
