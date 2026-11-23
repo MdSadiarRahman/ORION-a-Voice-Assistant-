@@ -1,198 +1,373 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="bn" class="dark">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ORION AI — Neural Command Center</title>
-  <link rel="stylesheet" href="styles.css">
-</head>
-<body>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VoiceMate AI — Neural Command Center</title>
 
-<!-- ══════════════════════════════════════════
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600;700&family=Hind+Siliguri:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            space:   '#07080F',
+            panel:   '#0D0E1A',
+            surface: '#12141F',
+            violet:  { DEFAULT: '#7C3AED', light: '#A78BFA', dark: '#5B21B6', glow: 'rgba(124,58,237,0.35)' },
+            cyan:    { DEFAULT: '#06B6D4', light: '#67E8F9', glow: 'rgba(6,182,212,0.35)' },
+            emerald: { DEFAULT: '#10B981', glow: 'rgba(16,185,129,0.35)' },
+            amber:   { DEFAULT: '#F59E0B', glow: 'rgba(245,158,11,0.35)' },
+            crimson: { DEFAULT: '#F43F5E', glow: 'rgba(244,63,94,0.35)' },
+          },
+          fontFamily: {
+            heading: ['"Space Grotesk"', 'system-ui', 'sans-serif'],
+            ui:      ['"Inter"', '"Hind Siliguri"', 'system-ui', 'sans-serif'],
+            bengali: ['"Hind Siliguri"', '"Inter"', 'sans-serif'],
+            mono:    ['"JetBrains Mono"', '"Consolas"', 'monospace'],
+          },
+          backdropBlur: { glass: '16px' },
+          boxShadow: {
+            glow:    '0 0 24px rgba(124,58,237,0.4), 0 0 48px rgba(124,58,237,0.15)',
+            'glow-cyan':  '0 0 20px rgba(6,182,212,0.5), 0 0 40px rgba(6,182,212,0.2)',
+            'glow-green': '0 0 20px rgba(16,185,129,0.5)',
+            card:    '0 8px 32px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.05)',
+          },
+          animation: {
+            'spin-slow':   'spin 4s linear infinite',
+            'spin-medium': 'spin 2.5s linear infinite',
+            'spin-fast':   'spin 1.5s linear infinite',
+            'pulse-slow':  'pulse 3s ease-in-out infinite',
+            'float':       'float 3s ease-in-out infinite',
+            'blink':       'blink 1.2s step-end infinite',
+            'progress':    'progress 2.4s ease forwards',
+            'fade-out':    'fadeOut 0.6s ease forwards',
+            'slide-up':    'slideUp 0.5s ease forwards',
+            'cosmic-spin': 'cosmicSpin 20s linear infinite',
+          },
+          keyframes: {
+            float:      { '0%,100%': { transform: 'translateY(0px)' }, '50%': { transform: 'translateY(-8px)' } },
+            blink:      { '50%': { opacity: 0 } },
+            progress:   { from: { width: '0%' }, to: { width: '100%' } },
+            fadeOut:    { from: { opacity: 1 }, to: { opacity: 0, pointerEvents: 'none' } },
+            slideUp:    { from: { opacity: 0, transform: 'translateY(16px)' }, to: { opacity: 1, transform: 'translateY(0)' } },
+            cosmicSpin: { from: { transform: 'rotate(0deg)' }, to: { transform: 'rotate(360deg)' } },
+          }
+        }
+      }
+    };
+  </script>
+
+  <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body class="bg-space text-white font-ui overflow-hidden h-screen select-none">
+
+<!-- ═══════════════════════════════════════════════════════════
+     COSMIC BACKGROUND — animated radial glow
+═══════════════════════════════════════════════════════════ -->
+<div class="cosmic-bg" aria-hidden="true">
+  <div class="cosmic-orb orb-violet"></div>
+  <div class="cosmic-orb orb-cyan"></div>
+  <div class="cosmic-grid"></div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
      LAUNCH SPLASH OVERLAY
-══════════════════════════════════════════ -->
-<div id="splash" onclick="dismissSplash()">
-  <div class="splash-inner">
-    <div class="orbital-ring">
-      <div class="ring ring1"></div>
-      <div class="ring ring2"></div>
-      <div class="ring ring3"></div>
-      <div class="core-dot"></div>
+═══════════════════════════════════════════════════════════ -->
+<div id="splash" class="splash-overlay" onclick="onSplashClick()">
+  <!-- Orbital rings -->
+  <div class="splash-rings" aria-hidden="true">
+    <div class="orb-ring ring-outer"></div>
+    <div class="orb-ring ring-mid"></div>
+    <div class="orb-ring ring-inner"></div>
+    <div class="orb-core"></div>
+    <!-- Orbiting nodes -->
+    <div class="orbit-node node-1"></div>
+    <div class="orbit-node node-2"></div>
+    <div class="orbit-node node-3"></div>
+  </div>
+
+  <!-- Splash text -->
+  <div class="splash-content">
+    <h1 class="splash-title">VOICEMATE AI</h1>
+    <p class="splash-subtitle font-mono">NEURAL CORE INITIALIZING...</p>
+    <div class="splash-bar-wrap">
+      <div class="splash-bar-track">
+        <div class="splash-bar-fill" id="splashBar"></div>
+      </div>
     </div>
-    <div class="splash-title">ORION AI</div>
-    <div class="splash-sub">INITIALIZING NEURAL CORE...</div>
-    <div class="splash-bar"><div class="splash-progress" id="splashProgress"></div></div>
-    <div class="splash-hint">Click to continue</div>
+    <p class="splash-hint">Click anywhere to launch neural interface</p>
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════
-     HUD HEADER
-══════════════════════════════════════════ -->
-<header class="hud-header">
+<!-- ═══════════════════════════════════════════════════════════
+     HUD HEADER — Glassmorphic Top Bar
+═══════════════════════════════════════════════════════════ -->
+<header class="hud-header" id="hudHeader">
+
+  <!-- Left: Logo + Status -->
   <div class="hud-left">
     <div class="hud-logo">
-      <span class="logo-icon">◈</span>
-      <span class="logo-text">ORION AI</span>
+      <div class="logo-hex" aria-hidden="true">
+        <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+          <polygon points="16,2 29,9 29,23 16,30 3,23 3,9" stroke="#7C3AED" stroke-width="1.5" fill="rgba(124,58,237,0.12)"/>
+          <polygon points="16,7 24,11.5 24,20.5 16,25 8,20.5 8,11.5" stroke="#06B6D4" stroke-width="1" fill="rgba(6,182,212,0.08)"/>
+          <circle cx="16" cy="16" r="4" fill="#7C3AED" opacity="0.9"/>
+        </svg>
+      </div>
+      <div>
+        <div class="logo-name font-heading">VOICEMATE AI</div>
+        <div class="logo-tagline font-mono">NEURAL COMMAND CENTER</div>
+      </div>
     </div>
-    <div class="hud-status">
+
+    <!-- Status pill -->
+    <div class="status-pill" id="statusPill">
       <span class="status-dot" id="statusDot"></span>
-      <span class="status-label" id="statusLabel">OFFLINE</span>
+      <span class="status-text font-mono" id="statusText">OFFLINE</span>
     </div>
   </div>
-  <div class="hud-center">
-    <span class="engine-badge" id="engineBadge">⚡ Detecting Engine...</span>
-  </div>
+
+  <!-- Right: Badges + Controls -->
   <div class="hud-right">
-    <div class="battery-widget">
-      <span class="battery-icon">🔋</span>
-      <span id="batteryPct">--%</span>
-      <span class="charge-icon" id="chargeIcon" style="display:none">⚡</span>
+    <!-- Engine badge -->
+    <div class="engine-badge" id="engineBadge">
+      <span id="engineIcon">⚡</span>
+      <span id="engineName" class="font-mono">Detecting...</span>
     </div>
-    <button class="hud-btn" id="muteBtn" title="Toggle UI Sounds" onclick="toggleMute()">
+
+    <!-- Battery pill -->
+    <div class="battery-pill" id="batteryPill">
+      <span class="bat-icon" id="batIcon">🔋</span>
+      <span class="bat-pct font-mono" id="batPct">--%</span>
+      <span class="bat-charge" id="batCharge" style="display:none">⚡</span>
+    </div>
+
+    <!-- Voice service neon toggle -->
+    <div class="neon-toggle-wrap">
+      <span class="toggle-label font-mono">SVC</span>
+      <button class="neon-toggle" id="svcToggle" onclick="toggleService()" title="Voice Service চালু/বন্ধ">
+        <span class="neon-thumb" id="svcThumb"></span>
+      </button>
+    </div>
+
+    <!-- Mute toggle -->
+    <button class="hud-icon-btn" id="muteBtn" onclick="toggleMute()" title="UI Sound Mute/Unmute">
       <span id="muteIcon">🔊</span>
     </button>
-    <button class="hud-btn service-btn" id="serviceBtn" onclick="toggleService()">
-      <span id="serviceIcon">▶</span> <span id="serviceTxt">START</span>
+
+    <!-- Settings -->
+    <button class="hud-icon-btn" onclick="openSettings()" title="Settings">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+      </svg>
     </button>
   </div>
 </header>
 
-<!-- ══════════════════════════════════════════
-     PILL NAV TABS
-══════════════════════════════════════════ -->
-<nav class="pill-nav">
-  <button class="pill active" id="pill0" onclick="switchTab(0)">🧠 Neural Chat</button>
-  <button class="pill" id="pill1" onclick="switchTab(1)">🛠 Agent Toolkit</button>
-  <button class="pill" id="pill2" onclick="switchTab(2)">📡 Telemetry</button>
+<!-- ═══════════════════════════════════════════════════════════
+     FLOATING PILL NAVIGATION
+═══════════════════════════════════════════════════════════ -->
+<nav class="pill-nav" id="pillNav" role="tablist">
+  <div class="pill-track">
+    <!-- Sliding active indicator -->
+    <div class="pill-glider" id="pillGlider"></div>
+    <button class="pill-btn active" id="pill-0" role="tab" aria-selected="true"  onclick="switchTab(0)">
+      <span class="pill-icon">🎙️</span>
+      <span class="pill-label font-bengali">ভয়েস ও চ্যাট হাব</span>
+    </button>
+    <button class="pill-btn" id="pill-1" role="tab" aria-selected="false" onclick="switchTab(1)">
+      <span class="pill-icon">🤖</span>
+      <span class="pill-label font-bengali">এআই এজেন্ট টুলকিট</span>
+    </button>
+    <button class="pill-btn" id="pill-2" role="tab" aria-selected="false" onclick="switchTab(2)">
+      <span class="pill-icon">📋</span>
+      <span class="pill-label font-bengali">কার্যকলাপ ও লগ</span>
+    </button>
+  </div>
 </nav>
 
-<!-- ══════════════════════════════════════════
-     MAIN CONTENT
-══════════════════════════════════════════ -->
-<main class="main-content">
+<!-- ═══════════════════════════════════════════════════════════
+     MAIN CONTENT AREA
+═══════════════════════════════════════════════════════════ -->
+<main class="main-area" id="mainArea">
 
-  <!-- ─── TAB 0: NEURAL CHAT ─── -->
-  <section class="tab-panel active" id="tab0">
-    <!-- Orbital Visualizer -->
-    <div class="visualizer-wrap">
-      <canvas id="orbCanvas" width="700" height="180"></canvas>
-      <div class="orb-state-label" id="orbLabel">IDLE</div>
+  <!-- ─────────────────────────────────────────────
+       TAB 0 — ভয়েস ও চ্যাট হাব
+  ───────────────────────────────────────────── -->
+  <section class="tab-panel active" id="tab-0" role="tabpanel">
+
+    <!-- Orbital Visualizer Canvas -->
+    <div class="viz-container">
+      <canvas id="orbCanvas"></canvas>
+      <div class="viz-state-badge font-mono" id="vizBadge">IDLE</div>
+      <div class="viz-rings-bg" aria-hidden="true">
+        <div class="bg-ring bg-ring-1"></div>
+        <div class="bg-ring bg-ring-2"></div>
+      </div>
     </div>
 
     <!-- Quick Action Chips -->
     <div class="chip-row">
-      <button class="chip" onclick="quickAction('কম্পিউটারের ব্যাটারি স্ট্যাটাস দেখাও')">🔋 ব্যাটারি স্ট্যাটাস</button>
-      <button class="chip" onclick="quickAction('সিস্টেম ইনফো দেখাও')">💻 সিস্টেম ইনফো</button>
-      <button class="chip" onclick="quickAction('আজকের আবহাওয়া কেমন?')">🌤 আবহাওয়া</button>
-      <button class="chip" onclick="quickAction('সময় এবং তারিখ বলো')">🕒 সময় ও তারিখ</button>
-      <button class="chip" onclick="quickAction('কাছাকাছি রেস্তোরাঁ খোঁজো')">🍽 রেস্তোরাঁ</button>
+      <button class="chip font-bengali" onclick="quickAction('কম্পিউটারের ব্যাটারি স্ট্যাটাস দেখাও')">🔋 ব্যাটারি স্ট্যাটাস</button>
+      <button class="chip font-bengali" onclick="quickAction('সিস্টেম ইনফো দেখাও')">💻 সিস্টেম ইনফো</button>
+      <button class="chip font-bengali" onclick="quickAction('আজকের আবহাওয়া কেমন?')">🌤 আবহাওয়া</button>
+      <button class="chip font-bengali" onclick="quickAction('এখন কয়টা বাজে বলো')">🕒 সময় ও তারিখ</button>
+      <button class="chip font-bengali" onclick="quickAction('কাছাকাছি রেস্তোরাঁ খোঁজো')">🍽 রেস্তোরাঁ</button>
     </div>
 
     <!-- Chat Stream -->
     <div class="chat-stream" id="chatStream">
-      <div class="chat-welcome">
-        <div class="welcome-icon">◈</div>
-        <div class="welcome-title">ORION AI সক্রিয়</div>
-        <div class="welcome-sub">Neural Command Center প্রস্তুত। আমাকে কিছু জিজ্ঞেস করুন।</div>
+      <div class="chat-welcome" id="chatWelcome">
+        <div class="welcome-orb">
+          <div class="w-orb-ring r1"></div>
+          <div class="w-orb-ring r2"></div>
+          <span class="w-orb-icon">◈</span>
+        </div>
+        <h2 class="welcome-title font-heading">VoiceMate AI সক্রিয়</h2>
+        <p class="welcome-sub font-bengali">Neural Command Center প্রস্তুত।<br>আমাকে কিছু বলুন বা টাইপ করুন।</p>
       </div>
     </div>
 
     <!-- Input Dock -->
     <div class="input-dock">
-      <button class="voice-btn" id="voiceBtn" onclick="toggleVoice()" title="ভয়েস ইনপুট">🎤</button>
-      <input class="cmd-input" id="cmdInput" type="text" placeholder="কমান্ড লিখুন বা মাইক্রোফোন ব্যবহার করুন..."
-             onkeydown="if(event.key==='Enter') sendCommand()">
-      <button class="send-btn" onclick="sendCommand()">➤</button>
+      <button class="mic-btn" id="micBtn" onclick="toggleVoice()" title="ভয়েস ইনপুট">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 1a4 4 0 0 1 4 4v7a4 4 0 0 1-8 0V5a4 4 0 0 1 4-4zm0 2a2 2 0 0 0-2 2v7a2 2 0 0 0 4 0V5a2 2 0 0 0-2-2zm7 8h-1.07A6.01 6.01 0 0 1 12 18a6.01 6.01 0 0 1-5.93-7H5a7 7 0 0 0 6 6.92V21H9v2h6v-2h-2v-2.08A7 7 0 0 0 19 11z"/>
+        </svg>
+      </button>
+      <div class="input-wrap">
+        <input
+          class="cmd-input font-bengali"
+          id="cmdInput"
+          type="text"
+          placeholder="কমান্ড লিখুন বা মাইক্রোফোন ব্যবহার করুন..."
+          autocomplete="off"
+          onkeydown="if(event.key==='Enter')sendCommand()"
+        />
+        <div class="input-glow" aria-hidden="true"></div>
+      </div>
+      <button class="send-btn" onclick="sendCommand()" title="পাঠান">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+        </svg>
+      </button>
     </div>
   </section>
 
-  <!-- ─── TAB 1: AGENT TOOLKIT ─── -->
-  <section class="tab-panel" id="tab1">
+  <!-- ─────────────────────────────────────────────
+       TAB 1 — এআই এজেন্ট টুলকিট
+  ───────────────────────────────────────────── -->
+  <section class="tab-panel" id="tab-1" role="tabpanel">
     <div class="toolkit-grid">
 
       <!-- Card: Browser Automation -->
-      <div class="mission-card" data-status="READY">
-        <div class="card-header">
-          <span class="card-icon">🌐</span>
-          <div>
-            <div class="card-title">Browser Automation</div>
-            <div class="card-desc">AI-powered web browsing, scraping &amp; task automation</div>
+      <div class="mission-card" data-accent="cyan">
+        <div class="mc-glow" aria-hidden="true"></div>
+        <div class="mc-header">
+          <div class="mc-icon-wrap cyan-icon">🌐</div>
+          <div class="mc-info">
+            <div class="mc-title font-heading">Browser Automation</div>
+            <div class="mc-desc font-bengali">AI-চালিত ওয়েব ব্রাউজিং, স্ক্র্যাপিং ও টাস্ক অটোমেশন</div>
           </div>
-          <span class="card-badge ready">READY</span>
+          <span class="mc-badge ready font-mono">READY</span>
         </div>
-        <div class="card-actions">
-          <button class="tk-btn" onclick="runToolkit('browser_agent', 'URL বা টাস্ক লিখুন:')">🤖 Browser Agent</button>
-          <button class="tk-btn" onclick="runToolkit('web_automation', 'Automation টাস্ক লিখুন:')">⚙️ Web Automation</button>
-          <button class="tk-btn" onclick="runToolkit('product_research', 'পণ্যের নাম লিখুন:')">🔍 Product Research</button>
+        <div class="mc-actions">
+          <button class="mc-btn" onclick="runToolkit('browser_agent','URL বা টাস্ক লিখুন:')">🤖 Browser Agent</button>
+          <button class="mc-btn" onclick="runToolkit('web_automation','Automation টাস্ক লিখুন:')">⚙️ Web Automation</button>
+          <button class="mc-btn" onclick="runToolkit('product_research','পণ্যের নাম লিখুন:')">🔍 Product Research</button>
         </div>
       </div>
 
       <!-- Card: Document Intelligence -->
-      <div class="mission-card" data-status="READY">
-        <div class="card-header">
-          <span class="card-icon">📄</span>
-          <div>
-            <div class="card-title">Document Intelligence</div>
-            <div class="card-desc">PDF/DOCX parsing, OCR, assignment solving &amp; summarization</div>
+      <div class="mission-card" data-accent="violet">
+        <div class="mc-glow" aria-hidden="true"></div>
+        <div class="mc-header">
+          <div class="mc-icon-wrap violet-icon">📄</div>
+          <div class="mc-info">
+            <div class="mc-title font-heading">Document Intelligence</div>
+            <div class="mc-desc font-bengali">PDF/DOCX পার্সিং, OCR, অ্যাসাইনমেন্ট সলভার ও সামারাইজেশন</div>
           </div>
-          <span class="card-badge ready">READY</span>
+          <span class="mc-badge ready font-mono">READY</span>
         </div>
-        <div class="card-actions">
-          <button class="tk-btn" onclick="runToolkit('assignment_solver', 'অ্যাসাইনমেন্ট বিষয় লিখুন:')">📝 Assignment Solver</button>
-          <button class="tk-btn" onclick="runToolkit('docling_converter', 'ফাইল পাথ লিখুন:')">🔄 Docling Converter</button>
-          <button class="tk-btn" onclick="runToolkit('doc_reader', 'ডকুমেন্ট পাথ লিখুন:')">📖 Doc Reader</button>
+        <div class="mc-actions">
+          <button class="mc-btn" onclick="runToolkit('assignment_solver','অ্যাসাইনমেন্ট বিষয় লিখুন:')">📝 Assignment Solver</button>
+          <button class="mc-btn" onclick="runToolkit('docling_converter','ফাইল পাথ লিখুন:')">🔄 Docling Converter</button>
+          <button class="mc-btn" onclick="runToolkit('doc_reader','ডকুমেন্ট পাথ লিখুন:')">📖 Doc Reader</button>
         </div>
       </div>
 
       <!-- Card: Software Engineering -->
-      <div class="mission-card" data-status="READY">
-        <div class="card-header">
-          <span class="card-icon">💻</span>
-          <div>
-            <div class="card-title">Software Engineering</div>
-            <div class="card-desc">AI coding, website builder, developer canvas &amp; tools</div>
+      <div class="mission-card" data-accent="emerald">
+        <div class="mc-glow" aria-hidden="true"></div>
+        <div class="mc-header">
+          <div class="mc-icon-wrap emerald-icon">💻</div>
+          <div class="mc-info">
+            <div class="mc-title font-heading">Software Engineering</div>
+            <div class="mc-desc font-bengali">AI কোডিং, ওয়েবসাইট বিল্ডার, ডেভেলপার ক্যানভাস ও টুলস</div>
           </div>
-          <span class="card-badge ready">READY</span>
+          <span class="mc-badge ready font-mono">READY</span>
         </div>
-        <div class="card-actions">
-          <button class="tk-btn" onclick="runToolkit('website_builder', 'ওয়েবসাইট ধরন লিখুন:')">🌍 Website Builder</button>
-          <button class="tk-btn" onclick="runToolkit('ai_coder', 'কোডিং টাস্ক লিখুন:')">🤖 AI Coder</button>
-          <button class="tk-btn" onclick="runToolkit('developer_canvas', 'প্রজেক্ট বিবরণ লিখুন:')">🎨 Dev Canvas</button>
+        <div class="mc-actions">
+          <button class="mc-btn" onclick="runToolkit('website_builder','ওয়েবসাইট ধরন লিখুন:')">🌍 Website Builder</button>
+          <button class="mc-btn" onclick="runToolkit('ai_coder','কোডিং টাস্ক লিখুন:')">🤖 AI Coder</button>
+          <button class="mc-btn" onclick="runToolkit('developer_canvas','প্রজেক্ট বিবরণ লিখুন:')">🎨 Dev Canvas</button>
         </div>
       </div>
 
       <!-- Card: Enterprise & API -->
-      <div class="mission-card" data-status="READY">
-        <div class="card-header">
-          <span class="card-icon">⚡</span>
-          <div>
-            <div class="card-title">Enterprise &amp; API</div>
-            <div class="card-desc">n8n workflows, API gateway, LangGraph brain orchestration</div>
+      <div class="mission-card" data-accent="amber">
+        <div class="mc-glow" aria-hidden="true"></div>
+        <div class="mc-header">
+          <div class="mc-icon-wrap amber-icon">⚡</div>
+          <div class="mc-info">
+            <div class="mc-title font-heading">Enterprise &amp; API</div>
+            <div class="mc-desc font-bengali">n8n ওয়ার্কফ্লো, API গেটওয়ে, LangGraph ব্রেইন অর্কেস্ট্রেশন</div>
           </div>
-          <span class="card-badge ready">READY</span>
+          <span class="mc-badge ready font-mono">READY</span>
         </div>
-        <div class="card-actions">
-          <button class="tk-btn" onclick="runToolkit('n8n_workflow', 'Workflow বিবরণ লিখুন:')">🔗 n8n Workflow</button>
-          <button class="tk-btn" onclick="runToolkit('api_gateway', 'API endpoint লিখুন:')">🔌 API Gateway</button>
-          <button class="tk-btn" onclick="runToolkit('langgraph_brain', 'LangGraph টাস্ক লিখুন:')">🧠 LangGraph Brain</button>
+        <div class="mc-actions">
+          <button class="mc-btn" onclick="runToolkit('n8n_workflow','Workflow বিবরণ লিখুন:')">🔗 n8n Workflow</button>
+          <button class="mc-btn" onclick="runToolkit('api_gateway','API endpoint লিখুন:')">🔌 API Gateway</button>
+          <button class="mc-btn" onclick="runToolkit('langgraph_brain','LangGraph টাস্ক লিখুন:')">🧠 LangGraph Brain</button>
         </div>
       </div>
 
     </div>
   </section>
 
-  <!-- ─── TAB 2: TELEMETRY CONSOLE ─── -->
-  <section class="tab-panel" id="tab2">
+  <!-- ─────────────────────────────────────────────
+       TAB 2 — কার্যকলাপ ও লগ
+  ───────────────────────────────────────────── -->
+  <section class="tab-panel" id="tab-2" role="tabpanel">
+    <!-- Toolbar -->
     <div class="tele-toolbar">
-      <span class="tele-title">📡 ORION TELEMETRY FEED</span>
+      <div class="tele-title-wrap">
+        <span class="tele-dot" aria-hidden="true"></span>
+        <span class="tele-title font-mono">ORION TELEMETRY FEED</span>
+      </div>
       <div class="tele-controls">
-        <input class="tele-search" id="teleSearch" type="text" placeholder="🔍 Filter logs..." oninput="filterLogs()">
-        <button class="tele-btn" id="autoScrollBtn" onclick="toggleAutoScroll()">⬇ Auto-Scroll ON</button>
-        <button class="tele-btn danger" onclick="clearLogs()">🗑 Clear</button>
+        <div class="search-wrap">
+          <svg class="search-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input class="tele-search font-mono" id="teleSearch" type="text" placeholder="Filter logs..." oninput="filterLogs()" />
+        </div>
+        <button class="tele-ctrl-btn on font-mono" id="autoScrollBtn" onclick="toggleAutoScroll()">⬇ Auto-Scroll</button>
+        <button class="tele-ctrl-btn danger font-mono" onclick="clearLogs()">🗑 Clear</button>
       </div>
     </div>
-    <div class="tele-console" id="teleConsole"></div>
+
+    <!-- Log console -->
+    <div class="tele-console font-mono" id="teleConsole">
+      <!-- Log lines injected here -->
+    </div>
   </section>
 
 </main>
