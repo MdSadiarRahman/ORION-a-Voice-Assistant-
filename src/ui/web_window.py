@@ -221,8 +221,7 @@ def _build_state_callback(bridge_ref: list, window_ref: list):
         # Also push log
         if message:
             tag = "AGENT" if js_state == "thinking" else ("SUCCESS" if js_state == "idle" else "INFO")
-            msg_escaped = message.replace("'", "\\'").replace("\n", " ")
-            bridge._js(f"window.appendLog && window.appendLog('{tag}', '{msg_escaped}')")
+            bridge._js(f"window.appendLog && window.appendLog({json.dumps(tag)}, {json.dumps(message)})")
 
     return on_state_change
 

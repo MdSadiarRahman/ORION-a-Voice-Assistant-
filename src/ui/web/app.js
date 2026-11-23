@@ -367,7 +367,7 @@ window.onAgentStateChange = function(state) {
 };
 
 window.appendChat = appendChat;
-window.appendLog = function(tag, msg) { appendLog(tag, msg); };
+window.appendLog = appendLog;
 
 window.updateTelemetry = function(data) {
   if (data.battery !== undefined && data.battery !== null) {
