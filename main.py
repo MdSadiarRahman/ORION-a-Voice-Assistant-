@@ -14,14 +14,9 @@ except Exception:
     pass
 
 def run_gui():
-    print("🚀 VoiceMate Desktop GUI চালু হচ্ছে...", flush=True)
-    import tkinter as tk
-    from src.ui.main_window import MainWindow
-
-    root = tk.Tk()
-    app = MainWindow(root)
-    root.protocol("WM_DELETE_WINDOW", app._exit_app)
-    root.mainloop()
+    print("🚀 ORION AI Desktop GUI চালু হচ্ছে...", flush=True)
+    from src.ui.web_window import launch_web_window
+    launch_web_window()
 
 def run_cli():
     print("=" * 60, flush=True)
