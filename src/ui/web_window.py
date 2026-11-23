@@ -109,8 +109,17 @@ class VoiceMateBridge:
             return {"status": "error", "message": str(e)}
 
     def trigger_quick_action(self, action_text: str) -> dict:
-        """Execute a quick-action chip prompt."""
-        return self.send_command(action_text)
+        """Execute a quick-action chip prompt with full query mapping."""
+        mapping = {
+            "Solve Assignment": "Assignment 01.pdf solve kore docx e save koro",
+            "Compare Prices": "HP laptop er dam koto compare koro",
+            "Build Website": "হাসপাতাল ম্যানেজমেন্ট ওয়েবসাইট বানিয়ে সার্ভার রান করো",
+            "Play Music": "ইউটিউবে একটি গান প্লে করো",
+            "Battery Status": "আমার ল্যাপটপের চার্জ কতটুকু আছে",
+            "কম্পিউটারের ব্যাটারি স্ট্যাটাস দেখাও": "আমার ল্যাপটপের চার্জ কতটুকু আছে",
+        }
+        cmd = mapping.get(action_text.strip(), action_text.strip())
+        return self.send_command(cmd)
 
     def run_toolkit_action(self, agent_name: str, param: str = "") -> dict:
         """
@@ -197,30 +206,34 @@ def _build_state_callback(bridge_ref: list, window_ref: list):
             return
 
         # Map internal keys → clean state dict for JS
+        is_running   = state.get("is_running", True)
         is_listening = state.get("is_listening", False)
         is_speaking  = state.get("is_speaking",  False)
         is_typing    = state.get("is_typing_mode", False)
         message      = state.get("message", "")
 
-        if is_listening:
-            js_state = "listening"
+        if not is_running:
+            js_state = "offline"
         elif is_speaking:
             js_state = "speaking"
+        elif is_listening:
+            js_state = "listening"
         elif message:
             js_state = "thinking"
         else:
             js_state = "idle"
 
         payload = json.dumps({
-            "state":   js_state,
-            "message": message,
+            "state":      js_state,
+            "message":    message,
+            "is_running": is_running,
         })
 
         bridge._js(f"window.onAgentStateChange && window.onAgentStateChange({payload})")
 
         # Also push log
         if message:
-            tag = "AGENT" if js_state == "thinking" else ("SUCCESS" if js_state == "idle" else "INFO")
+            tag = "AGENT" if js_state in ["thinking", "speaking"] else ("SUCCESS" if js_state in ["idle", "listening"] else "INFO")
             bridge._js(f"window.appendLog && window.appendLog({json.dumps(tag)}, {json.dumps(message)})")
 
     return on_state_change
@@ -259,6 +272,7 @@ def launch_web_window():
     state_callback = _build_state_callback(bridge_ref, window_ref)
 
     agent = AgentService(on_state_change=state_callback)
+    agent.start()  # Start voice listener & background service on launch
 
     bridge = VoiceMateBridge(agent, None)
     bridge_ref[0] = bridge
@@ -277,6 +291,7 @@ def launch_web_window():
 
     window_ref[0] = window
     bridge._set_window(window)
+    window.events.closing += lambda: agent.stop()
 
     # Start battery polling thread
     _start_battery_poll(bridge)
@@ -288,7 +303,11 @@ def launch_web_window():
             telem = bridge.get_telemetry()
             payload = json.dumps(telem)
             bridge._js(f"window.updateTelemetry && window.updateTelemetry({payload})")
-            bridge._js("window.appendLog && window.appendLog('SUCCESS', 'ORION AI Bridge সংযুক্ত')")
+            bridge._js("window.appendLog && window.appendLog('SUCCESS', 'VoiceMate AI Neural Core সংযুক্ত')")
+            init_state = json.dumps({"state": "idle", "message": "অ্যাসিস্ট্যান্ট প্রস্তুত", "is_running": True})
+            bridge._js(f"window.onAgentStateChange && window.onAgentStateChange({init_state})")
+        except Exception as e:
+            print(f"[Bridge] on_loaded error: {e}", flush=True)
         except Exception as e:
             print(f"[Bridge] on_loaded error: {e}", flush=True)
 
