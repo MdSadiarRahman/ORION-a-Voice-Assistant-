@@ -962,11 +962,26 @@ html, body {
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
   overflow: hidden;
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transform-style: preserve-3d;
 }
 .mission-card:hover {
-  transform: translateY(-3px);
+  transform: translateY(-4px) scale(1.008);
+}
+.mission-card[data-accent="cyan"]:hover {
   border-color: var(--cyan);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.7), 0 0 25px rgba(6, 182, 212, 0.25);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7), 0 0 28px rgba(6, 182, 212, 0.35);
+}
+.mission-card[data-accent="violet"]:hover {
+  border-color: var(--violet);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7), 0 0 28px rgba(124, 58, 237, 0.35);
+}
+.mission-card[data-accent="emerald"]:hover {
+  border-color: var(--emerald);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7), 0 0 28px rgba(16, 185, 129, 0.35);
+}
+.mission-card[data-accent="amber"]:hover {
+  border-color: var(--amber);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7), 0 0 28px rgba(245, 158, 11, 0.35);
 }
 
 .mc-glow {
@@ -1024,11 +1039,12 @@ html, body {
 }
 
 .mc-badge {
-  padding: 3px 9px;
+  padding: 3px 10px;
   border-radius: 999px;
   font-size: 9.5px;
   font-weight: 700;
   letter-spacing: 1px;
+  transition: all 0.25s ease;
 }
 .mc-badge.ready {
   background: rgba(16, 185, 129, 0.15);
@@ -1036,10 +1052,15 @@ html, body {
   color: var(--emerald);
 }
 .mc-badge.active {
-  background: rgba(6, 182, 212, 0.2);
+  background: rgba(6, 182, 212, 0.25);
   border: 1px solid var(--cyan);
   color: var(--cyan);
-  box-shadow: 0 0 10px var(--cyan);
+  box-shadow: 0 0 14px var(--cyan);
+  animation: pulseBadge 1.2s ease-in-out infinite alternate;
+}
+@keyframes pulseBadge {
+  0% { opacity: 0.7; transform: scale(0.95); }
+  100% { opacity: 1; transform: scale(1.05); }
 }
 
 .mc-actions {

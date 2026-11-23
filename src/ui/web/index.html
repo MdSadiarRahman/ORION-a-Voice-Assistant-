@@ -269,75 +269,76 @@
   <section class="tab-panel" id="tab-1" role="tabpanel">
     <div class="toolkit-grid">
 
-      <!-- Card: Browser Automation -->
+      <!-- Quadrant 1: Browser Automation (Browser-Use / Playwright) -->
       <div class="mission-card" data-accent="cyan">
         <div class="mc-glow" aria-hidden="true"></div>
         <div class="mc-header">
           <div class="mc-icon-wrap cyan-icon">🌐</div>
           <div class="mc-info">
             <div class="mc-title font-heading">Browser Automation</div>
-            <div class="mc-desc font-bengali">AI-চালিত ওয়েব ব্রাউজিং, স্ক্র্যাপিং ও টাস্ক অটোমেশন</div>
+            <div class="mc-desc font-bengali">Browser-Use 1.0 &amp; Playwright অটোনোমাস ওয়েব নেভিগেশন</div>
           </div>
-          <span class="mc-badge ready font-mono">READY</span>
+          <span class="mc-badge ready font-mono" id="badge-browser">READY</span>
         </div>
         <div class="mc-actions">
-          <button class="mc-btn" onclick="runToolkit('browser_agent','URL বা টাস্ক লিখুন:')">🤖 Browser Agent</button>
-          <button class="mc-btn" onclick="runToolkit('web_automation','Automation টাস্ক লিখুন:')">⚙️ Web Automation</button>
-          <button class="mc-btn" onclick="runToolkit('product_research','পণ্যের নাম লিখুন:')">🔍 Product Research</button>
+          <button class="mc-btn font-bengali" onclick="runToolkit('browser_agent','ব্রাউজারে গিয়ে এজেন্ট কি কাজ করবে লিখুন:')">🤖 Browser Agent (Browser-Use)</button>
+          <button class="mc-btn font-bengali" onclick="runToolkit('web_automation','Playwright অটোমেশন কমান্ড লিখুন:')">⚙️ Web Automation (Playwright)</button>
+          <button class="mc-btn font-bengali" onclick="runToolkit('web_automation','স্ক্রিনশট URL লিখুন:')">📸 Web Screenshot &amp; Scrape</button>
         </div>
       </div>
 
-      <!-- Card: Document Intelligence -->
+      <!-- Quadrant 2: Document Intelligence (Assignment Solver & DOCX Builder) -->
       <div class="mission-card" data-accent="violet">
         <div class="mc-glow" aria-hidden="true"></div>
         <div class="mc-header">
           <div class="mc-icon-wrap violet-icon">📄</div>
           <div class="mc-info">
             <div class="mc-title font-heading">Document Intelligence</div>
-            <div class="mc-desc font-bengali">PDF/DOCX পার্সিং, OCR, অ্যাসাইনমেন্ট সলভার ও সামারাইজেশন</div>
+            <div class="mc-desc font-bengali">Assignment Solver, Docling ও DOCX ডকুমেন্ট বিল্ডার</div>
           </div>
-          <span class="mc-badge ready font-mono">READY</span>
+          <span class="mc-badge ready font-mono" id="badge-doc">READY</span>
         </div>
         <div class="mc-actions">
-          <button class="mc-btn" onclick="runToolkit('assignment_solver','অ্যাসাইনমেন্ট বিষয় লিখুন:')">📝 Assignment Solver</button>
-          <button class="mc-btn" onclick="runToolkit('docling_converter','ফাইল পাথ লিখুন:')">🔄 Docling Converter</button>
-          <button class="mc-btn" onclick="runToolkit('doc_reader','ডকুমেন্ট পাথ লিখুন:')">📖 Doc Reader</button>
+          <button class="mc-btn font-bengali" onclick="runToolkit('assignment_solver','অ্যাসাইনমেন্ট বিষয় বা PDF পাথ লিখুন:')">📝 Assignment Solver (DOCX Builder)</button>
+          <button class="mc-btn font-bengali" onclick="runToolkit('docling_converter','Docling কনভার্ট ফাইল পাথ লিখুন:')">🔄 Docling Multimodal Converter</button>
+          <button class="mc-btn font-bengali" onclick="runToolkit('doc_reader','পড়ার জন্য ডকুমেন্ট পাথ লিখুন:')">📖 PyMuPDF Document Reader</button>
         </div>
       </div>
 
-      <!-- Card: Software Engineering -->
+      <!-- Quadrant 3: Software Engineering (Website Builder, Aider, OpenHands) -->
       <div class="mission-card" data-accent="emerald">
         <div class="mc-glow" aria-hidden="true"></div>
         <div class="mc-header">
           <div class="mc-icon-wrap emerald-icon">💻</div>
           <div class="mc-info">
             <div class="mc-title font-heading">Software Engineering</div>
-            <div class="mc-desc font-bengali">AI কোডিং, ওয়েবসাইট বিল্ডার, ডেভেলপার ক্যানভাস ও টুলস</div>
+            <div class="mc-desc font-bengali">Website Builder, Aider এআই কোডার ও OpenHands ক্যানভাস</div>
           </div>
-          <span class="mc-badge ready font-mono">READY</span>
+          <span class="mc-badge ready font-mono" id="badge-se">READY</span>
         </div>
         <div class="mc-actions">
-          <button class="mc-btn" onclick="runToolkit('website_builder','ওয়েবসাইট ধরন লিখুন:')">🌍 Website Builder</button>
-          <button class="mc-btn" onclick="runToolkit('ai_coder','কোডিং টাস্ক লিখুন:')">🤖 AI Coder</button>
-          <button class="mc-btn" onclick="runToolkit('developer_canvas','প্রজেক্ট বিবরণ লিখুন:')">🎨 Dev Canvas</button>
+          <button class="mc-btn font-bengali" onclick="runToolkit('website_builder','কী ধরনের ওয়েবসাইট তৈরি করতে চান লিখুন:')">🌍 Website Builder (Live Server)</button>
+          <button class="mc-btn font-bengali" onclick="runToolkit('ai_coder','কোডিং টাস্ক বা অডিট কমান্ড লিখুন:')">🤖 AI Coder (Aider Refactor)</button>
+          <button class="mc-btn font-bengali" onclick="runToolkit('developer_canvas','ক্যানভাস বা টার্মিনাল কমান্ড লিখুন:')">🎨 Developer Canvas (OpenHands)</button>
         </div>
       </div>
 
-      <!-- Card: Enterprise & API -->
+      <!-- Quadrant 4: Enterprise & API (Product Comparator, n8n, FastAPI Gateway) -->
       <div class="mission-card" data-accent="amber">
         <div class="mc-glow" aria-hidden="true"></div>
         <div class="mc-header">
           <div class="mc-icon-wrap amber-icon">⚡</div>
           <div class="mc-info">
             <div class="mc-title font-heading">Enterprise &amp; API</div>
-            <div class="mc-desc font-bengali">n8n ওয়ার্কফ্লো, API গেটওয়ে, LangGraph ব্রেইন অর্কেস্ট্রেশন</div>
+            <div class="mc-desc font-bengali">Product Comparator, n8n ওয়ার্কফ্লো ও FastAPI গেটওয়ে</div>
           </div>
-          <span class="mc-badge ready font-mono">READY</span>
+          <span class="mc-badge ready font-mono" id="badge-enterprise">READY</span>
         </div>
         <div class="mc-actions">
-          <button class="mc-btn" onclick="runToolkit('n8n_workflow','Workflow বিবরণ লিখুন:')">🔗 n8n Workflow</button>
-          <button class="mc-btn" onclick="runToolkit('api_gateway','API endpoint লিখুন:')">🔌 API Gateway</button>
-          <button class="mc-btn" onclick="runToolkit('langgraph_brain','LangGraph টাস্ক লিখুন:')">🧠 LangGraph Brain</button>
+          <button class="mc-btn font-bengali" onclick="runToolkit('product_research','কোন প্রোডাক্টের দাম যাচাই করতে চান লিখুন:')">🔍 Product Comparator (দারাজ/স্টারটেক)</button>
+          <button class="mc-btn font-bengali" onclick="runToolkit('n8n_workflow','n8n ওয়ার্কফ্লো টাস্ক লিখুন:')">🔗 n8n Workflow Automation</button>
+          <button class="mc-btn font-bengali" onclick="runToolkit('api_gateway','FastAPI কমান্ড লিখুন:')">🔌 FastAPI Gateway &amp; Swagger</button>
+          <button class="mc-btn font-bengali" onclick="runToolkit('langgraph_brain','LangGraph ব্রেইন কমান্ড লিখুন:')">🧠 LangGraph Brain Orchestrator</button>
         </div>
       </div>
 

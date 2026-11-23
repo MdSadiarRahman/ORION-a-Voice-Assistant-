@@ -284,18 +284,47 @@ async function quickAction(prompt) {
 }
 
 // ── Toolkit Action Trigger ──────────────────────────────────────────
+const AGENT_BADGE_MAP = {
+  browser_agent: 'badge-browser',
+  web_automation: 'badge-browser',
+  assignment_solver: 'badge-doc',
+  docling_converter: 'badge-doc',
+  doc_reader: 'badge-doc',
+  website_builder: 'badge-se',
+  ai_coder: 'badge-se',
+  developer_canvas: 'badge-se',
+  product_research: 'badge-enterprise',
+  n8n_workflow: 'badge-enterprise',
+  api_gateway: 'badge-enterprise',
+  langgraph_brain: 'badge-enterprise'
+};
+
 async function runToolkit(agentName, promptTitle) {
   playUiTick(650);
   const param = window.prompt(promptTitle || 'টাস্ক লিখুন:', '');
   if (param === null) return;
 
-  appendLog('AGENT', `টুলকিট সক্রিয়: ${agentName} — "${param}"`);
+  const badgeId = AGENT_BADGE_MAP[agentName];
+  const badgeEl = badgeId ? document.getElementById(badgeId) : null;
+  if (badgeEl) {
+    badgeEl.className = 'mc-badge active font-mono';
+    badgeEl.textContent = 'ACTIVE';
+  }
+
+  appendLog('AGENT', `টুলকিট সক্রিয়: [${agentName}] — "${param}"`);
   switchTab(0); // View agent feedback in Tab 0
 
   try {
     await safeApi('run_toolkit_action', agentName, param);
   } catch (e) {
     appendLog('ERROR', `টুলকিট চালনায় ত্রুটি: ${e}`);
+  } finally {
+    setTimeout(() => {
+      if (badgeEl) {
+        badgeEl.className = 'mc-badge ready font-mono';
+        badgeEl.textContent = 'READY';
+      }
+    }, 4500);
   }
 }
 
@@ -499,7 +528,11 @@ function initVisualizer() {
   if (!orbCanvas) return;
   orbCtx = orbCanvas.getContext('2d');
   resizeCanvas();
+
+  window.removeEventListener('resize', resizeCanvas);
   window.addEventListener('resize', resizeCanvas);
+
+  if (orbAnim) cancelAnimationFrame(orbAnim);
   drawVisualizer();
 }
 

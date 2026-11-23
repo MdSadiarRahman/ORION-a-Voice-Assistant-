@@ -115,30 +115,38 @@ class VoiceMateBridge:
     def run_toolkit_action(self, agent_name: str, param: str = "") -> dict:
         """
         Trigger a named toolkit sub-agent action.
-        agent_name maps to the internal _trigger_* methods.
+        Maps natural language instructions directly to the agent processor.
         """
-        mapping = {
-            "browser_agent":     "_trigger_browser_agent",
-            "web_automation":    "_trigger_web_automation",
-            "product_research":  "_trigger_product_research",
-            "assignment_solver": "_trigger_assignment_solver",
-            "docling_converter": "_trigger_docling_converter",
-            "doc_reader":        "_trigger_doc_reader",
-            "website_builder":   "_trigger_website_builder",
-            "ai_coder":          "_trigger_ai_coder",
-            "developer_canvas":  "_trigger_developer_canvas",
-            "n8n_workflow":      "_trigger_n8n_workflow",
-            "api_gateway":       "_trigger_api_gateway",
-            "langgraph_brain":   "_trigger_langgraph_brain",
-        }
+        param = (param or "").strip()
+        cmd = ""
+        if agent_name == "product_research":
+            cmd = f"খুঁজে দাও {param} দাম কত" if param else "দারাজে সেরা ল্যাপটপ খোঁজো"
+        elif agent_name == "assignment_solver":
+            cmd = f"{param} solve kore docx e save koro" if param else "Assignment solve kore docx e save koro"
+        elif agent_name == "website_builder":
+            cmd = f"{param} ওয়েবসাইট বানিয়ে সার্ভার চালু করো" if param else "Portfolio ওয়েবসাইট বানিয়ে সার্ভার চালু করো"
+        elif agent_name == "browser_agent":
+            cmd = f"ব্রাউজারে গিয়ে {param}" if param else "ব্রাউজারে গিয়ে গিটহাবে ভয়েসমেট সার্চ করো"
+        elif agent_name == "doc_reader":
+            cmd = f"ডকুমেন্ট পড়ো {param}" if param else "ডকুমেন্ট পড়ো"
+        elif agent_name == "docling_converter":
+            cmd = f"ডকলিং ডকুমেন্ট কনভার্ট {param}" if param else "ডকলিং ডকুমেন্ট কনভার্ট"
+        elif agent_name == "web_automation":
+            cmd = param if param else "ওয়েব অটোমেশন চালু করো"
+        elif agent_name == "developer_canvas":
+            cmd = param if param else "ক্যানভাস চালু করো"
+        elif agent_name == "ai_coder":
+            cmd = param if param else "রেপো ম্যাপ তৈরি করো"
+        elif agent_name == "n8n_workflow":
+            cmd = param if param else "এনএইটেন খোলো"
+        elif agent_name == "api_gateway":
+            cmd = param if param else "এপিআই ওপেন করো"
+        elif agent_name == "langgraph_brain":
+            cmd = param if param else "ব্রেন স্ট্যাটাস"
+        else:
+            cmd = f"{agent_name}: {param}" if param else agent_name
 
-        handler_name = mapping.get(agent_name)
-        if not handler_name:
-            return {"status": "error", "message": f"Unknown agent: {agent_name}"}
-
-        # Compose a natural-language command and route through process_results
-        command = f"{agent_name.replace('_', ' ')}: {param}" if param else agent_name.replace('_', ' ')
-        return self.send_command(command)
+        return self.send_command(cmd)
 
     def get_telemetry(self) -> dict:
         """Return current system telemetry for the HUD."""
