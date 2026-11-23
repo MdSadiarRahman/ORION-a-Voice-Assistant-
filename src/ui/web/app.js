@@ -488,7 +488,7 @@ async function safeApi(method, ...args) {
 }
 
 // ═════════════════════════════════════════════════════════════════════
-//  CANVAS ORBITAL VISUALIZER (60 FPS Aethermind Audio Reactor)
+//  SOLAR-ORBIT 60 FPS AUDIO-REACTIVE VISUALIZER (HTML5 Canvas)
 // ═════════════════════════════════════════════════════════════════════
 let orbCanvas, orbCtx, orbAnim;
 let orbState = 'idle';
@@ -525,91 +525,203 @@ function drawVisualizer() {
 
   orbCtx.clearRect(0, 0, W, H);
 
-  // Dynamic theme colors per agent state
-  const colors = {
-    idle:      { core: '#06B6D4', ring: '#7C3AED', wave: '#67E8F9' },
-    listening: { core: '#06B6D4', ring: '#06B6D4', wave: '#A78BFA' },
-    thinking:  { core: '#7C3AED', ring: '#A78BFA', wave: '#C4B5FD' },
-    speaking:  { core: '#F59E0B', ring: '#FBBF24', wave: '#FCD34D' },
-    offline:   { core: '#F43F5E', ring: '#FB7185', wave: '#FDA4AF' }
+  // ── State-Specific Palettes & Speeds ────────────────────────────────
+  // idle:      Soft Cosmic Violet slow breathing orbit
+  // listening: Vibrant Neon Cyan fast ripple + active spectrum bars
+  // thinking:  Rotating Amber & Violet accelerated orbit
+  // speaking:  Smooth Emerald & Cyan harmonic wave
+  const stateThemes = {
+    idle: {
+      core: '#8B5CF6',
+      corona: '#7C3AED',
+      ring1: '#7C3AED',
+      ring2: '#A78BFA',
+      ring3: '#6D28D9',
+      bars: '#8B5CF6',
+      speed: 0.75,
+      ripple: 0.35,
+    },
+    listening: {
+      core: '#06B6D4',
+      corona: '#0891B2',
+      ring1: '#06B6D4',
+      ring2: '#22D3EE',
+      ring3: '#67E8F9',
+      bars: '#06B6D4',
+      speed: 1.5,
+      ripple: 1.0,
+    },
+    thinking: {
+      core: '#F59E0B',
+      corona: '#D97706',
+      ring1: '#7C3AED',
+      ring2: '#F59E0B',
+      ring3: '#A78BFA',
+      bars: '#FBBF24',
+      speed: 2.1,
+      ripple: 0.85,
+    },
+    speaking: {
+      core: '#10B981',
+      corona: '#059669',
+      ring1: '#06B6D4',
+      ring2: '#10B981',
+      ring3: '#34D399',
+      bars: '#10B981',
+      speed: 1.4,
+      ripple: 0.9,
+    },
+    offline: {
+      core: '#F43F5E',
+      corona: '#BE123C',
+      ring1: '#F43F5E',
+      ring2: '#FB7185',
+      ring3: '#E11D48',
+      bars: '#F43F5E',
+      speed: 0.5,
+      ripple: 0.2,
+    }
   };
-  const c = colors[orbState] || colors.idle;
 
-  const speed = orbState === 'thinking' ? 2.2 : (orbState === 'speaking' ? 1.6 : (orbState === 'listening' ? 1.4 : 0.8));
+  const theme = stateThemes[orbState] || stateThemes.idle;
+  const spd = theme.speed;
 
-  // 1. Bilateral Spectrum Wave Bars
-  const bars = 28;
+  // ── 1. Bilateral Wide Spectrum Harmonic Bars ─────────────────────────
+  const sideBars = 22;
   const barW = 3;
-  const maxSpan = Math.min(W * 0.44, 320);
-  const step = maxSpan / bars;
+  const maxSpan = Math.min(W * 0.38, 260);
+  const step = maxSpan / sideBars;
+  const startOffset = 110; // start outside solar rings
 
-  for (let i = 0; i < bars; i++) {
-    let amp = Math.sin(orbTime * speed * 2 + i * 0.45);
-    let h = 6 + Math.abs(amp) * 36;
+  for (let i = 0; i < sideBars; i++) {
+    let waveAmp = Math.sin(orbTime * spd * 2.2 + i * 0.4);
+    let barH = 5 + Math.abs(waveAmp) * (24 * theme.ripple);
 
-    if (orbState === 'idle') h *= 0.35;
-    if (orbState === 'listening') h = 10 + Math.abs(Math.sin(orbTime * 4 + i * 0.7)) * 42;
-    if (orbState === 'speaking') h = 12 + Math.abs(Math.sin(orbTime * 5 + i * 0.6)) * 48;
+    if (orbState === 'listening') {
+      barH += Math.abs(Math.sin(orbTime * 4.5 + i * 0.8)) * 18;
+    } else if (orbState === 'speaking') {
+      barH += Math.abs(Math.cos(orbTime * 3.5 + i * 0.5)) * 16;
+    }
 
-    const alpha = 0.25 + 0.5 * (h / 50);
-    orbCtx.fillStyle = hexToRgba(c.wave, alpha);
+    const alpha = 0.2 + 0.45 * Math.min(barH / 35, 1);
+    orbCtx.fillStyle = hexToRgba(theme.bars, alpha);
 
-    // Right Spectrum
-    const rx = cx + step * (i + 0.6);
-    orbCtx.fillRect(rx - barW / 2, cy - h / 2, barW, h);
+    // Right wing
+    const rx = cx + startOffset + step * i;
+    orbCtx.fillRect(rx - barW / 2, cy - barH / 2, barW, barH);
 
-    // Left Spectrum
-    const lx = cx - step * (i + 0.6);
-    orbCtx.fillRect(lx - barW / 2, cy - h / 2, barW, h);
+    // Left wing
+    const lx = cx - startOffset - step * i;
+    orbCtx.fillRect(lx - barW / 2, cy - barH / 2, barW, barH);
   }
 
-  // 2. Orbital Sci-Fi Rings
-  const rings = [
-    { r: 52, spd: speed * 0.8,  dash: [8, 6], w: 1.5, col: c.ring,  alpha: 0.7 },
-    { r: 36, spd: -speed * 1.2, dash: [4, 4], w: 1.2, col: c.core,  alpha: 0.6 },
-    { r: 22, spd: speed * 1.5,  dash: [],     w: 1.0, col: '#FFF',   alpha: 0.5 }
-  ];
+  // ── 2. Reactive Circular Audio Spectrum Bars (surrounding core) ─────
+  const circleBars = 36;
+  const innerR = 24;
 
-  rings.forEach(ring => {
-    orbCtx.save();
-    orbCtx.translate(cx, cy);
-    orbCtx.rotate(orbTime * ring.spd);
+  for (let j = 0; j < circleBars; j++) {
+    const angle = (j / circleBars) * Math.PI * 2;
+    let circAmp = Math.sin(orbTime * spd * 3.0 + j * 0.6);
+    let barLen = 5 + Math.abs(circAmp) * (14 * theme.ripple);
+
+    if (orbState === 'listening') {
+      barLen += Math.abs(Math.sin(orbTime * 5.0 + j * 1.2)) * 12;
+    } else if (orbState === 'thinking') {
+      barLen += (j % 2 === 0 ? 8 : 2);
+    } else if (orbState === 'speaking') {
+      barLen += Math.abs(Math.sin(orbTime * 3.5 + j * 0.8)) * 10;
+    }
+
+    const cosA = Math.cos(angle);
+    const sinA = Math.sin(angle);
+    const x1 = cx + cosA * innerR;
+    const y1 = cy + sinA * innerR;
+    const x2 = cx + cosA * (innerR + barLen);
+    const y2 = cy + sinA * (innerR + barLen);
 
     orbCtx.beginPath();
-    orbCtx.arc(0, 0, ring.r, 0, Math.PI * 2);
-    orbCtx.setLineDash(ring.dash);
-    orbCtx.strokeStyle = hexToRgba(ring.col, ring.alpha);
-    orbCtx.lineWidth = ring.w;
-    orbCtx.shadowColor = ring.col;
-    orbCtx.shadowBlur = 10;
+    orbCtx.moveTo(x1, y1);
+    orbCtx.lineTo(x2, y2);
+    orbCtx.lineWidth = 1.5;
+    orbCtx.strokeStyle = hexToRgba(theme.bars, 0.45 + (barLen / 30) * 0.4);
+    orbCtx.stroke();
+  }
+
+  // ── 3. Solar-Orbit Tilted Counter-Rotating Planetary Rings ──────────
+  const solarRings = [
+    // Ring 1: Inner tilted orbit
+    { rx: 54, ry: 22, tilt: -0.32, spd: spd * 1.1,  col: theme.ring1, dash: [6, 4], nodeSize: 3.5 },
+    // Ring 2: Middle counter-tilted orbit
+    { rx: 76, ry: 28, tilt: 0.42,  spd: -spd * 1.35, col: theme.ring2, dash: [4, 6], nodeSize: 4.0 },
+    // Ring 3: Outer tilted planetary orbit
+    { rx: 96, ry: 34, tilt: -0.16, spd: spd * 0.75,  col: theme.ring3, dash: [8, 8], nodeSize: 3.0 },
+  ];
+
+  solarRings.forEach((rObj) => {
+    orbCtx.save();
+    orbCtx.translate(cx, cy);
+    orbCtx.rotate(rObj.tilt);
+
+    // Orbit ellipse path
+    orbCtx.beginPath();
+    orbCtx.ellipse(0, 0, rObj.rx, rObj.ry, 0, 0, Math.PI * 2);
+    orbCtx.setLineDash(rObj.dash);
+    orbCtx.strokeStyle = hexToRgba(rObj.col, 0.55);
+    orbCtx.lineWidth = 1.3;
+    orbCtx.shadowColor = rObj.col;
+    orbCtx.shadowBlur = 8;
     orbCtx.stroke();
 
-    // Satellite node on outermost ring
-    if (ring.dash.length > 0) {
-      orbCtx.beginPath();
-      orbCtx.arc(ring.r, 0, 3, 0, Math.PI * 2);
-      orbCtx.fillStyle = '#FFF';
-      orbCtx.shadowBlur = 14;
-      orbCtx.shadowColor = ring.col;
-      orbCtx.fill();
-    }
+    // Orbiting planetary node along the tilted ellipse
+    const theta = orbTime * rObj.spd;
+    const nx = rObj.rx * Math.cos(theta);
+    const ny = rObj.ry * Math.sin(theta);
+
+    // Node trailing glow
+    orbCtx.beginPath();
+    orbCtx.arc(nx, ny, rObj.nodeSize * 1.8, 0, Math.PI * 2);
+    orbCtx.fillStyle = hexToRgba(rObj.col, 0.25);
+    orbCtx.fill();
+
+    // Node solid body
+    orbCtx.beginPath();
+    orbCtx.arc(nx, ny, rObj.nodeSize, 0, Math.PI * 2);
+    orbCtx.fillStyle = '#FFFFFF';
+    orbCtx.shadowColor = rObj.col;
+    orbCtx.shadowBlur = 12;
+    orbCtx.fill();
 
     orbCtx.restore();
   });
 
-  // 3. Glowing Neural Core
-  const pulse = 1 + 0.16 * Math.sin(orbTime * (orbState === 'idle' ? 1.5 : 3.5));
-  const grad = orbCtx.createRadialGradient(cx, cy, 0, cx, cy, 18 * pulse);
-  grad.addColorStop(0, '#FFFFFF');
-  grad.addColorStop(0.35, hexToRgba(c.core, 0.9));
-  grad.addColorStop(0.8, hexToRgba(c.ring, 0.4));
-  grad.addColorStop(1, 'transparent');
+  // ── 4. Central Glowing Energy Core ──────────────────────────────────
+  const breathFreq = orbState === 'idle' ? 1.6 : (orbState === 'thinking' ? 3.8 : 2.5);
+  const pulse = 1 + 0.16 * Math.sin(orbTime * breathFreq);
+  const coreRadius = 15 * pulse;
+
+  // Outer Corona Glow
+  const coronaGrad = orbCtx.createRadialGradient(cx, cy, 0, cx, cy, coreRadius * 2.2);
+  coronaGrad.addColorStop(0, hexToRgba(theme.corona, 0.8));
+  coronaGrad.addColorStop(0.5, hexToRgba(theme.core, 0.35));
+  coronaGrad.addColorStop(1, 'transparent');
 
   orbCtx.beginPath();
-  orbCtx.arc(cx, cy, 18 * pulse, 0, Math.PI * 2);
-  orbCtx.fillStyle = grad;
-  orbCtx.shadowColor = c.core;
-  orbCtx.shadowBlur = 24 * pulse;
+  orbCtx.arc(cx, cy, coreRadius * 2.2, 0, Math.PI * 2);
+  orbCtx.fillStyle = coronaGrad;
+  orbCtx.fill();
+
+  // Core Solid Gradient with White Flare
+  const coreGrad = orbCtx.createRadialGradient(cx, cy, 0, cx, cy, coreRadius);
+  coreGrad.addColorStop(0, '#FFFFFF');
+  coreGrad.addColorStop(0.35, hexToRgba(theme.core, 0.95));
+  coreGrad.addColorStop(0.85, hexToRgba(theme.corona, 0.7));
+  coreGrad.addColorStop(1, 'transparent');
+
+  orbCtx.beginPath();
+  orbCtx.arc(cx, cy, coreRadius, 0, Math.PI * 2);
+  orbCtx.fillStyle = coreGrad;
+  orbCtx.shadowColor = theme.core;
+  orbCtx.shadowBlur = 25 * pulse;
   orbCtx.fill();
 }
 
