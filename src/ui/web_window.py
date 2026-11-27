@@ -112,7 +112,7 @@ class VoiceMateBridge:
         """Execute a quick-action chip prompt with full query mapping."""
         mapping = {
             "Solve Assignment": "Assignment 01.pdf solve kore docx e save koro",
-            "Build Website": "হাসপাতাল ম্যানেজমেন্ট ওয়েবসাইট বানিয়ে সার্ভার রান করো",
+            "Web Research": "কোয়ান্টাম কম্পিউটিং কী?",
             "Weather": "আজকের আবহাওয়া কেমন?",
             "Find Files": "পিসিতে থাকা পিডিএফ ফাইল খুঁজে দাও",
             "Play Music": "ইউটিউবে একটি গান প্লে করো",
@@ -133,12 +133,8 @@ class VoiceMateBridge:
             cmd = param if param else "কোয়ান্টাম কম্পিউটিং কী?"
         elif agent_name == "file_search":
             cmd = f"পিসিতে {param} ফাইল খুঁজে দাও" if param else "পিসিতে থাকা পিডিএফ ফাইল খুঁজে দাও"
-        elif agent_name == "product_research":
-            cmd = f"খুঁজে দাও {param} দাম কত" if param else "দারাজে সেরা ল্যাপটপ খোঁজো"
         elif agent_name == "assignment_solver":
             cmd = f"{param} solve kore docx e save koro" if param else "Assignment solve kore docx e save koro"
-        elif agent_name == "website_builder":
-            cmd = f"{param} ওয়েবসাইট বানিয়ে সার্ভার চালু করো" if param else "Portfolio ওয়েবসাইট বানিয়ে সার্ভার চালু করো"
         elif agent_name == "browser_agent":
             cmd = f"ব্রাউজারে গিয়ে {param}" if param else "ব্রাউজারে গিয়ে গিটহাবে ভয়েসমেট সার্চ করো"
         elif agent_name == "doc_reader":
@@ -147,16 +143,6 @@ class VoiceMateBridge:
             cmd = f"ডকলিং ডকুমেন্ট কনভার্ট {param}" if param else "ডকলিং ডকুমেন্ট কনভার্ট"
         elif agent_name == "web_automation":
             cmd = param if param else "ওয়েব অটোমেশন চালু করো"
-        elif agent_name == "developer_canvas":
-            cmd = param if param else "ক্যানভাস চালু করো"
-        elif agent_name == "ai_coder":
-            cmd = param if param else "রেপো ম্যাপ তৈরি করো"
-        elif agent_name == "n8n_workflow":
-            cmd = param if param else "এনএইটেন খোলো"
-        elif agent_name == "api_gateway":
-            cmd = param if param else "এপিআই ওপেন করো"
-        elif agent_name == "langgraph_brain":
-            cmd = param if param else "ব্রেন স্ট্যাটাস"
         else:
             cmd = f"{agent_name}: {param}" if param else agent_name
 

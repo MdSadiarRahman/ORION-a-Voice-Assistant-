@@ -214,21 +214,11 @@ class FastCommandRouter:
                 source="fast_router"
             )
 
-        # 5. SPECIALIZED SUBSYSTEM TASKS (Docling, PyMuPDF, Aider, OpenHands, n8n, FastAPI, LangGraph)
+        # 5. SPECIALIZED SUBSYSTEM TASKS (Docling & PyMuPDF Document Intelligence)
         if any(kw in norm for kw in ["ডকলিং", "docling", "ওয়ার্ড ফাইল", "সেমান্টিক চাংক"]):
             return IntentResult(intent=Intent.SUBSYSTEM_TASK, action="docling", confidence=0.95, parameters={"query": raw}, raw_query=raw, source="fast_router")
         if any(kw in norm for kw in ["পিডিএফ পড়ো", "পিডিএফ সামারি", "ডকুমেন্ট পড়ো", "read pdf"]):
             return IntentResult(intent=Intent.SUBSYSTEM_TASK, action="document", confidence=0.95, parameters={"query": raw}, raw_query=raw, source="fast_router")
-        if any(kw in norm for kw in ["রেপো ম্যাপ", "repo map", "এইডার", "aider", "কোড এডিট"]):
-            return IntentResult(intent=Intent.SUBSYSTEM_TASK, action="coder", confidence=0.95, parameters={"query": raw}, raw_query=raw, source="fast_router")
-        if any(kw in norm for kw in ["ক্যানভাস খোলো", "ওপেনহ্যান্ডস", "openhands", "গিট স্ট্যাটাস", "ফাইল ট্রি"]):
-            return IntentResult(intent=Intent.SUBSYSTEM_TASK, action="canvas", confidence=0.95, parameters={"query": raw}, raw_query=raw, source="fast_router")
-        if any(kw in norm for kw in ["এনএইটেন", "n8n", "অটোমেশন ফ্লো", "নোশনে পাঠাও"]):
-            return IntentResult(intent=Intent.SUBSYSTEM_TASK, action="n8n", confidence=0.95, parameters={"query": raw}, raw_query=raw, source="fast_router")
-        if any(kw in norm for kw in ["এপিআই সার্ভার", "fastapi", "সোয়েগার ডক"]):
-            return IntentResult(intent=Intent.SUBSYSTEM_TASK, action="api_gateway", confidence=0.95, parameters={"query": raw}, raw_query=raw, source="fast_router")
-        if any(kw in norm for kw in ["ল্যাংগ্রাফ", "langgraph", "মাল্টি এজেন্ট", "ব্রেন স্ট্যাটাস"]):
-            return IntentResult(intent=Intent.SUBSYSTEM_TASK, action="brain", confidence=0.95, parameters={"query": raw}, raw_query=raw, source="fast_router")
 
         # 6. PLAY MUSIC / YOUTUBE PLAYBACK
         # Matches: "Play Kamariya song", "Kamariya chalao", "একটা কামারিয়া গান চালাও",

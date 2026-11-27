@@ -967,6 +967,14 @@ html, body {
 .mission-card:hover {
   transform: translateY(-4px) scale(1.008);
 }
+.mission-card.wide-card {
+  grid-column: 1 / -1;
+}
+.mission-card.wide-card .mc-actions {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
 .mission-card[data-accent="cyan"]:hover {
   border-color: var(--cyan);
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7), 0 0 28px rgba(6, 182, 212, 0.35);

@@ -336,15 +336,8 @@ const AGENT_BADGE_MAP = {
   assignment_solver: 'badge-doc',
   docling_converter: 'badge-doc',
   doc_reader: 'badge-doc',
-  website_builder: 'badge-se',
-  ai_coder: 'badge-se',
-  developer_canvas: 'badge-se',
-  web_research: 'badge-enterprise',
-  file_search: 'badge-enterprise',
-  product_research: 'badge-enterprise',
-  n8n_workflow: 'badge-enterprise',
-  api_gateway: 'badge-enterprise',
-  langgraph_brain: 'badge-enterprise'
+  web_research: 'badge-research',
+  file_search: 'badge-research'
 };
 
 async function runToolkit(agentName, promptTitle) {
