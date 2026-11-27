@@ -13,7 +13,6 @@ from typing import List, Dict, Any, Optional
 from config import DOCS_DIR
 from src.document_agent.pymupdf_reader import PyMuPDFReader
 from src.docling_agent.docling_converter import DoclingConverter
-from src.research_agent.research_controller import ResearchController
 from src.assignment_agent.docx_builder import PureDocxBuilder
 
 
@@ -26,8 +25,9 @@ class AssignmentController:
 
     @classmethod
     def resolve_assignment_path(cls, filename_or_path: str) -> Path:
-        """Resolves target file against documents/ directory or absolute path."""
-        p = Path(filename_or_path.strip().strip("'\"`"))
+        """Resolves target file against documents/ directory, PC user folders, or absolute path."""
+        raw = filename_or_path.strip().strip("'\"`")
+        p = Path(raw)
         if p.is_absolute() and p.exists():
             return p
 
@@ -38,10 +38,45 @@ class AssignmentController:
         if p.exists():
             return p.resolve()
 
-        # If not found on disk, look for any existing assignment file in documents/
-        existing = list(DOCS_DIR.glob("*.pdf")) + list(DOCS_DIR.glob("*.docx")) + list(DOCS_DIR.glob("*.md"))
-        if existing:
-            return existing[0]
+        # Search common PC directories (Desktop, Downloads, Documents, OneDrive, DOCS_DIR)
+        home = Path.home()
+        search_dirs = [
+            DOCS_DIR,
+            home / "Downloads",
+            home / "Desktop",
+            home / "Documents",
+            home / "OneDrive" / "Desktop",
+            home / "OneDrive" / "Documents",
+            Path.cwd(),
+        ]
+        exts = (".pdf", ".docx", ".md", ".txt")
+        candidates: List[Path] = []
+        for d in search_dirs:
+            if d.exists() and d.is_dir():
+                for ext in exts:
+                    candidates.extend(d.glob(f"*{ext}"))
+                    # Also check 1-level subdirectories for organized folders
+                    candidates.extend(d.glob(f"*/*{ext}"))
+
+        # Deduplicate and sort by most recently modified
+        unique_candidates = list({c.resolve(): c for c in candidates if c.is_file()}.values())
+        unique_candidates.sort(key=lambda c: c.stat().st_mtime, reverse=True)
+
+        # Match by filename or keywords in query
+        tokens = [t.lower() for t in re.split(r"[\s_\-\.]+", raw) if len(t) > 1]
+        if tokens:
+            for c in unique_candidates:
+                name_lower = c.name.lower()
+                if raw.lower() in name_lower or all(t in name_lower for t in tokens):
+                    return c
+            for c in unique_candidates:
+                name_lower = c.name.lower()
+                if any(t in name_lower for t in tokens):
+                    return c
+
+        # If no specific match, return most recent PDF/DOCX/MD found
+        if unique_candidates:
+            return unique_candidates[0]
 
         # Default fallback sample path
         default_file = DOCS_DIR / "sample_assignment.md"
@@ -130,30 +165,57 @@ class AssignmentController:
         }
 
     @classmethod
+    def _solve_with_gemini(cls, question_text: str, document_context: str) -> Optional[str]:
+        """Uses Gemini API to generate an accurate, detailed answer for a question."""
+        api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+        if not api_key:
+            return None
+        try:
+            import google.generativeai as genai
+            genai.configure(api_key=api_key)
+            model = genai.GenerativeModel("gemini-2.5-flash")
+            prompt = (
+                "You are an expert academic tutor. Read the following assignment question and "
+                "document context, then provide a clear, accurate, step-by-step solution. "
+                "Write the explanation clearly (in Bengali if the user/context is Bengali, or in English with Bengali summary if appropriate).\n\n"
+                f"Document Context (excerpt):\n{document_context[:3000]}\n\n"
+                f"Question:\n{question_text}\n\n"
+                "Provide a well-structured, complete answer:"
+            )
+            response = model.generate_content(prompt)
+            text = (response.text or "").strip()
+            return text if text else None
+        except Exception:
+            return None
+
+    @classmethod
     def generate_solutions(cls, parsed_data: Dict[str, Any]) -> List[Dict[str, Any]]:
         """
         Drafts step-by-step educational explanations and answers for each question,
-        incorporating web research concepts and citations.
+        using Gemini LLM when available, with a structured fallback.
         """
         solutions = []
+        doc_context = parsed_data.get("raw_text_preview", "")
         for q in parsed_data.get("questions", []):
             num = q["question_number"]
             q_text = q["question_text"]
             topic = q["topic"]
 
-            # Perform research for academic backing
-            research_res = ResearchController.search_web_sources(topic)
-            sources_summary = [s["title"] for s in research_res[:2]]
-
-            # Educational structured answer
-            explanation = (
-                f"**মূল ধারণা ও সংজ্ঞা:** {topic} হলো আধুনিক কম্পিউটার বিজ্ঞানের একটি গুরুত্বপূর্ণ ক্ষেত্র। "
-                f"এটি ডেটা বিশ্লেষণ, প্যাটার্ন রিকগনিশন এবং অটোমেশনের ভিত্তি হিসেবে কাজ করে।\n\n"
-                f"**ধাপে ধাপে বিশ্লেষণ:**\n"
-                f"১. প্রাথমিক উপাদানসমূহ: ইনপুট গ্রহণ, ফিচার এক্সট্রাকশন এবং প্রসেসিং।\n"
-                f"২. কর্মপদ্ধতি: নিয়মভিত্তিক ও প্রবাবিলিস্টিক মডেলিংয়ের মাধ্যমে ফলাফল নির্ণয়।\n"
-                f"৩. বাস্তব প্রয়োগ: স্বাস্থ্যসেবা, সাইবার সিকিউরিটি এবং রোবটিক্স অটোমেশনে বহুল ব্যবহৃত।"
-            )
+            llm_answer = cls._solve_with_gemini(q_text, doc_context)
+            if llm_answer:
+                explanation = llm_answer
+                sources_summary = ["Generated via Gemini AI Tutor"]
+            else:
+                sources_summary = ["Local Offline Template (GEMINI_API_KEY not configured)"]
+                explanation = (
+                    f"**প্রশ্ন:** {q_text}\n\n"
+                    f"**মূল ধারণা ও সংজ্ঞা:** {topic} হলো আধুনিক কম্পিউটার বিজ্ঞানের একটি গুরুত্বপূর্ণ ক্ষেত্র। "
+                    f"এটি ডেটা বিশ্লেষণ, প্যাটার্ন রিকগনিশন এবং অটোমেশনের ভিত্তি হিসেবে কাজ করে।\n\n"
+                    f"**ধাপে ধাপে বিশ্লেষণ:**\n"
+                    f"১. প্রাথমিক উপাদানসমূহ: ইনপুট গ্রহণ, ফিচার এক্সট্রাকশন এবং প্রসেসিং।\n"
+                    f"২. কর্মপদ্ধতি: নিয়মভিত্তিক ও প্রবাবিলিস্টিক মডেলিংয়ের মাধ্যমে ফলাফল নির্ণয়।\n"
+                    f"৩. বাস্তব প্রয়োগ: স্বাস্থ্যসেবা, সাইবার সিকিউরিটি এবং রোবটিক্স অটোমেশনে বহুল ব্যবহৃত।"
+                )
 
             solutions.append({
                 "question_number": num,

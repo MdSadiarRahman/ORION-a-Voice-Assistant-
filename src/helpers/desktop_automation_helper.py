@@ -9,12 +9,15 @@ import subprocess
 from typing import Optional
 
 # Windows virtual key codes
+VK_BACK = 0x08
 VK_RETURN = 0x0D
 VK_CONTROL = 0x11
 VK_MENU = 0x12       # ALT
+VK_A = 0x41
+VK_D = 0x44
+VK_Z = 0x5A
 VK_F4 = 0x73
 VK_LWIN = 0x5B       # Left Windows Key
-VK_D = 0x44
 VK_PRIOR = 0x21      # Page Up
 VK_NEXT = 0x22       # Page Down
 
@@ -156,6 +159,30 @@ class DesktopAutomationHelper:
         cls._send_key_event(VK_RETURN, keyup=False)
         time.sleep(0.05)
         cls._send_key_event(VK_RETURN, keyup=True)
+        return True
+
+    @classmethod
+    def delete_last_word(cls, count: int = 1) -> bool:
+        """Deletes the last word(s) using Ctrl + Backspace."""
+        for _ in range(max(1, count)):
+            cls.press_key_combination(VK_CONTROL, VK_BACK)
+            time.sleep(0.05)
+        return True
+
+    @classmethod
+    def undo_last(cls) -> bool:
+        """Undoes the last pasted phrase/sentence using Ctrl + Z."""
+        cls.press_key_combination(VK_CONTROL, VK_Z)
+        return True
+
+    @classmethod
+    def clear_all_text(cls) -> bool:
+        """Selects all text in the active input box and deletes it (Ctrl + A, Backspace)."""
+        cls.press_key_combination(VK_CONTROL, VK_A)
+        time.sleep(0.05)
+        cls._send_key_event(VK_BACK, keyup=False)
+        time.sleep(0.03)
+        cls._send_key_event(VK_BACK, keyup=True)
         return True
 
     @classmethod

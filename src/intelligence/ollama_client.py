@@ -47,7 +47,7 @@ Schema:
   "needs_confirmation": false
 }"""
 
-    def __init__(self, host: str = DEFAULT_HOST, model: str = "qwen3:4b", timeout_seconds: float = 4.0):
+    def __init__(self, host: str = DEFAULT_HOST, model: str = "qwen3:4b", timeout_seconds: float = 30.0):
         self.host = host.rstrip("/")
         self.preferred_model = model
         self.timeout = timeout_seconds
@@ -111,10 +111,11 @@ Schema:
             "messages": messages,
             "stream": False,
             "format": "json",
+            "think": False,
             "options": {
                 "temperature": 0.1,
                 "num_ctx": 2048,
-                "num_predict": 128
+                "num_predict": 512
             }
         }
 

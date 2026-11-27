@@ -17,12 +17,25 @@ from src.helpers.notification_helper import NotificationHelper
 from src.browser_agent.browser_task_runner import BrowserTaskRunner
 from src.document_agent.document_task_runner import DocumentTaskRunner
 from src.docling_agent.docling_task_runner import DoclingTaskRunner
-from src.playwright_agent.playwright_task_runner import PlaywrightTaskRunner
-from src.canvas_agent.canvas_task_runner import CanvasTaskRunner
-from src.coder_agent.coder_task_runner import CoderTaskRunner
+try:
+    from src.playwright_agent.playwright_task_runner import PlaywrightTaskRunner
+except ImportError:
+    PlaywrightTaskRunner = None
 from src.n8n_agent.n8n_task_runner import N8nTaskRunner
 from src.api_gateway.api_task_runner import APITaskRunner
 from src.agent_brain.brain_task_runner import BrainTaskRunner
+from src.assignment_agent.assignment_controller import AssignmentController
+
+# Optional agents (may not be installed)
+try:
+    from src.canvas_agent.canvas_task_runner import CanvasTaskRunner
+except ImportError:
+    CanvasTaskRunner = None
+
+try:
+    from src.coder_agent.coder_task_runner import CoderTaskRunner
+except ImportError:
+    CoderTaskRunner = None
 
 class AgentService:
     _instance: Optional['AgentService'] = None
@@ -38,6 +51,7 @@ class AgentService:
         self.is_waiting_for_search = False
         self.search_target = ""
         self._recent_spoken_phrases: list[tuple[float, str]] = []
+        self._last_tts_end_time: float = 0.0
 
         # Intelligence & Decision Engine
         from src.intelligence.decision_engine import HybridDecisionEngine
@@ -68,23 +82,27 @@ class AgentService:
     def _is_echo_of_assistant(self, spoken_text: str) -> bool:
         """
         Detects if recognized microphone text is an acoustic reflection of what the assistant just spoke.
-        Prevents endless audio loop and voice echoing.
+        Only checks while speaking or within 2.5s after TTS finishes so real follow-up commands are never dropped.
         """
         if not spoken_text:
             return False
         now = time.time()
+        # Only treat as potential acoustic echo while speaking or immediately after TTS ends
+        if not self._check_is_speaking() and (now - self._last_tts_end_time > 2.5):
+            return False
+
         spoken_clean = spoken_text.lower().strip()
         spoken_words = set(re.findall(r'[\w\u0980-\u09FF]+', spoken_clean))
 
         for t, phrase in self._recent_spoken_phrases:
-            if now - t > 12.0:
+            if now - t > 15.0:
                 continue
-            if spoken_clean in phrase or phrase in spoken_clean:
+            if len(spoken_clean) >= 8 and (spoken_clean in phrase or phrase in spoken_clean):
                 return True
             phrase_words = set(re.findall(r'[\w\u0980-\u09FF]+', phrase))
-            if spoken_words and phrase_words:
+            if len(spoken_words) >= 3 and phrase_words:
                 common = spoken_words & phrase_words
-                if len(common) / len(spoken_words) >= 0.5:
+                if len(common) / len(spoken_words) >= 0.8:
                     return True
         return False
 
@@ -135,6 +153,7 @@ class AgentService:
 
     def _on_tts_done(self):
         self.is_speaking = False
+        self._last_tts_end_time = time.time()
         if self.is_running:
             self.is_listening = True
             self._notify_state("আমি শুনছি...")
@@ -169,6 +188,39 @@ class AgentService:
 
         # ১. টাইপিং মোড সক্রিয় থাকলে
         if self.is_typing_mode:
+            # ১ক. সব লেখা মুছে ফেলা (Clear all)
+            clear_all_kws = [
+                "সব মুছো", "সব মুছে ফেলো", "সব ডিলিট", "সব কাটো", "ক্লিয়ার করো",
+                "ক্লিয়ার করো", "clear all", "delete all"
+            ]
+            if any(kw in spoken_lower for kw in clear_all_kws):
+                DesktopAutomationHelper.clear_all_text()
+                self.speak("সব লেখা মুছে ফেলা হয়েছে।", start_listening_after=True)
+                return
+
+            # ১খ. শেষের বাক্য / লাইন / অংশ মুছে ফেলা (Undo last pasted sentence)
+            undo_kws = [
+                "বাক্য মুছো", "বাক্য কাটো", "সেন্টেন্স মুছো", "সেন্টেন্স ডিলিট", "লাইন মুছো",
+                "আগেরটা মুছো", "শেষেরটা মুছো", "আনডু", "undo", "delete sentence",
+                "delete line", "delete last sentence", "sentence delete"
+            ]
+            if any(kw in spoken_lower for kw in undo_kws):
+                DesktopAutomationHelper.undo_last()
+                self.speak("শেষের বাক্যটি মুছে ফেলা হয়েছে।", start_listening_after=True)
+                return
+
+            # ১গ. শেষের শব্দ মুছে ফেলা (Delete word)
+            del_word_kws = [
+                "শব্দ মুছো", "শব্দ কাটো", "শব্দ ডিলিট", "মুছে ফেলো", "মুছো",
+                "ব্যাকস্পেস", "backspace", "delete word", "word delete", "delete that"
+            ]
+            if any(kw in spoken_lower for kw in del_word_kws) or spoken_lower in ["delete", "ডিলিট"]:
+                count_match = re.search(r"\d+", CommandProcessor.convert_bengali_digits(spoken_lower))
+                word_count = int(count_match.group()) if count_match else 1
+                DesktopAutomationHelper.delete_last_word(min(word_count, 20))
+                self.speak("মুছে ফেলা হয়েছে।", start_listening_after=True)
+                return
+
             if any(w in spoken_lower for w in ["বন্ধ", "কাটো", "exit", "stop typing"]):
                 self.is_typing_mode = False
                 self.speak("টাইপিং মোড বন্ধ করা হয়েছে।", start_listening_after=True)
@@ -179,8 +231,13 @@ class AgentService:
                 self.speak("মেসেজ পাঠানো হয়েছে", start_listening_after=True)
                 return
             else:
-                DesktopAutomationHelper.append_text(spoken_text)
-                if spoken_lower.endswith(" পাঠাও") or spoken_lower.endswith(" send"):
+                should_send = spoken_lower.endswith(" পাঠাও") or spoken_lower.endswith(" send")
+                text_to_type = spoken_text.strip()
+                if should_send:
+                    text_to_type = re.sub(r"\s+(পাঠাও|send)$", "", text_to_type, flags=re.IGNORECASE).strip()
+                if text_to_type:
+                    DesktopAutomationHelper.append_text(text_to_type if should_send else f"{text_to_type} ")
+                if should_send:
                     DesktopAutomationHelper.click_send()
                     self.speak("পাঠানো হয়েছে", start_listening_after=True)
                 return
@@ -197,6 +254,27 @@ class AgentService:
             self.is_typing_mode = True
             DesktopAutomationHelper.focus_and_open_keyboard()
             self.speak("টাইপিং মোড চালু হয়েছে। কি লিখবো বলুন?", start_listening_after=True)
+            return
+
+        # অ্যাসাইনমেন্ট এজেন্ট টাস্ক (Assignment Solver)
+        if response.startswith("ACTION_ASSIGNMENT_TASK|"):
+            assignment_query = response.split("|", 1)[1].strip()
+            self.speak("আমি অ্যাসাইনমেন্ট বিশ্লেষণ ও সমাধান শুরু করছি, অনুগ্রহ করে অপেক্ষা করুন...", start_listening_after=False)
+
+            def on_assignment_finish(result_msg: str):
+                self._notify_state(result_msg)
+                first_line = result_msg.split("\n")[0]
+                self.speak(first_line, start_listening_after=True)
+
+            def _run_assignment():
+                try:
+                    result = AssignmentController.execute_assignment_workflow(assignment_query)
+                    summary = result.get("voice_summary", "অ্যাসাইনমেন্ট সমাধান সম্পন্ন হয়েছে।")
+                    on_assignment_finish(summary)
+                except Exception as e:
+                    on_assignment_finish(f"অ্যাসাইনমেন্ট সমাধানে সমস্যা হয়েছে: {str(e)}")
+
+            threading.Thread(target=_run_assignment, daemon=True).start()
             return
 
         # ব্রাউজার এজেন্ট টাস্ক
@@ -280,6 +358,9 @@ class AgentService:
 
         # ওপেনহ্যান্ডস ডেভেলপার ক্যানভাস টাস্ক
         if response.startswith("ACTION_CANVAS_TASK|"):
+            if CanvasTaskRunner is None:
+                self.speak("দুঃখিত, ক্যানভাস এজেন্ট বর্তমানে উপলব্ধ নেই।", start_listening_after=True)
+                return
             canvas_task = response.split("|", 1)[1].strip()
             self.speak("আমি ডেভেলপার ক্যানভাস টাস্ক শুরু করছি, অনুগ্রহ করে অপেক্ষা করুন...", start_listening_after=False)
 
@@ -300,6 +381,9 @@ class AgentService:
 
         # এইডার এআই কোডার ও এডিটিং টাস্ক
         if response.startswith("ACTION_CODER_TASK|"):
+            if CoderTaskRunner is None:
+                self.speak("দুঃখিত, কোডার এজেন্ট বর্তমানে উপলব্ধ নেই।", start_listening_after=True)
+                return
             coder_task = response.split("|", 1)[1].strip()
             self.speak("আমি কোডার টাস্ক শুরু করছি, অপেক্ষা করুন...", start_listening_after=False)
 
@@ -389,8 +473,32 @@ class AgentService:
             self.speak(response, start_listening_after=True)
             return
         else:
+            # Try HybridDecisionEngine (python_rules first, then Ollama, then Gemini)
             try:
                 res_intent, res_reply = self.decision_engine.process_query(spoken_text)
+                if res_intent and getattr(res_intent, "source", "") == "python_rules":
+                    # Execute the actual tool action from ToolRegistry result
+                    action = getattr(res_intent, "action", "")
+                    if action == "OPEN_APPLICATION":
+                        from src.intelligence.tool_registry import ToolRegistry
+                        tr = ToolRegistry()
+                        tool_res = tr.execute("OPEN_APPLICATION", app_name=res_intent.parameters.get("app_name", ""))
+                        reply = tool_res.get("reply", res_reply)
+                    elif action == "SEARCH_LOCAL_FILE":
+                        from src.document_intelligence.file_search import FileSearchEngine
+                        eng = FileSearchEngine()
+                        query = res_intent.parameters.get("query", spoken_text)
+                        results = eng.search(query, search_content=False, max_results=3)
+                        if results:
+                            names = "، ".join([r.filename for r in results[:3]])
+                            reply = f"আমি খুঁজে পেয়েছি: {names}"
+                        else:
+                            reply = "আপনার পিসিতে ফাইলটি খুঁজে পাওয়া যায়নি।"
+                    else:
+                        reply = res_reply
+                    if reply:
+                        self.speak(reply, start_listening_after=True)
+                        return
                 if res_reply:
                     self.speak(res_reply, start_listening_after=True)
                     return

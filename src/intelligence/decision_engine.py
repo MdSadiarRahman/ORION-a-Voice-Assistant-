@@ -10,6 +10,8 @@ from src.intelligence.context_manager import ContextManager
 from src.intelligence.gemini_client import GeminiClient
 from src.intelligence.ollama_client import OllamaClient
 from src.intelligence.action_verifier import ActionVerifier
+from src.intelligence.intent_router import IntentRouter
+from src.intelligence.tool_registry import ToolRegistry
 from src.intelligence.safety_guard import SafetyGuard
 from src.helpers.media_controller import MediaController
 from src.helpers.app_helper import AppHelper
@@ -19,7 +21,17 @@ from src.helpers.search_helper import SearchHelper
 from src.helpers.desktop_automation_helper import DesktopAutomationHelper
 from src.helpers.camera_helper import CameraHelper
 from src.helpers.vision_helper import VisionHelper
-from src.product_agent.product_controller import ProductController
+# ProductController is loaded lazily to avoid ImportError if deleted
+ProductController = None
+def _get_product_controller():
+    global ProductController
+    if ProductController is None:
+        try:
+            from src.product_agent.product_controller import ProductController as _PC
+            ProductController = _PC
+        except ImportError:
+            ProductController = None
+    return ProductController
 
 
 class HybridDecisionEngine:
@@ -27,10 +39,15 @@ class HybridDecisionEngine:
     Central brain determining user intent, selecting tools, enforcing safety,
     executing verified actions, and maintaining dialog context.
     """
-    def __init__(self, ollama_host: str = "http://localhost:11434", ollama_model: str = "qwen3:4b"):
+    def __init__(self, ollama_host: str = "http://localhost:11434", ollama_model: str = "qwen3:4b", provider: Optional[str] = None):
+        import os
+        self.provider = (provider or os.getenv("VOICEMATE_LLM_PROVIDER", "ollama")).strip().lower()
         self.gemini = GeminiClient()
         self.ollama = OllamaClient(host=ollama_host, model=ollama_model)
         self.context = ContextManager()
+        self.intent_router = IntentRouter()
+        self.tool_registry = ToolRegistry()
+        print(f"[LLM] Configured provider={self.provider}, ollama_model={ollama_model}, ollama_host={ollama_host}")
 
     def process_query(self, user_text: str) -> Tuple[IntentResult, str]:
         """
@@ -40,6 +57,24 @@ class HybridDecisionEngine:
         raw_text = (user_text or "").strip()
         if not raw_text:
             return IntentResult(Intent.UNKNOWN, "none", 0.0), ""
+
+        # -------------------------------------------------------------
+        # STEP 0: Zero-Cost Python Rules (IntentRouter + ToolRegistry)
+        # -------------------------------------------------------------
+        routed = self.intent_router.route(raw_text)
+        if routed.confidence >= 0.85 and self.tool_registry.has_tool(routed.intent):
+            tool_res = self.tool_registry.execute(routed.intent, **routed.parameters)
+            if tool_res.get("ok"):
+                reply = tool_res.get("reply", "")
+                intent_res = IntentResult(
+                    intent=Intent.UNKNOWN,
+                    confidence=routed.confidence,
+                    action=routed.intent,
+                    parameters=routed.parameters,
+                    raw_query=raw_text,
+                    source="python_rules",
+                )
+                return intent_res, reply
 
         # -------------------------------------------------------------
         # STEP 1: Context Follow-Up Resolution (Slot Filling & Confirmation)
@@ -99,10 +134,13 @@ class HybridDecisionEngine:
             intent_res = FastCommandRouter.match(raw_text)
 
         # -------------------------------------------------------------
-        # STEP 3a: Cloud AI Mode via Google Gemini API (High-Speed, 0% Laptop RAM/CPU)
+        # STEP 3a: Cloud AI Mode via Google Gemini API (only when provider == "gemini")
         # -------------------------------------------------------------
-        if not intent_res and self.gemini.is_available():
-            gemini_output = self.gemini.analyze_query(raw_text, self.context.history)
+        if not intent_res and self.provider == "gemini":
+            if not self.gemini.is_available():
+                print("[LLM ERROR] Provider 'gemini' selected, but GEMINI_API_KEY or google-generativeai is unavailable.")
+            else:
+                gemini_output = self.gemini.analyze_query(raw_text, self.context.history)
             if gemini_output:
                 intent_str = gemini_output.get("intent", "unknown")
                 action_str = gemini_output.get("action", "none")
@@ -288,22 +326,29 @@ class HybridDecisionEngine:
         if intent in [Intent.PRODUCT_SEARCH, Intent.PRICE_CHECK]:
             query = params.get("query", "")
             budget = params.get("budget")
-            res = ProductController.search_and_research(query=query, budget=budget)
+            res = _get_product_controller()
+            if res is None:
+                return "দুঃখিত, প্রোডাক্ট সার্চ এজেন্ট বর্তমানে উপলব্ধ নেই।"
+            _PC = res
+            res = _PC.search_and_research(query=query, budget=budget)
             if res.get("products"):
                 self.context.set_product_context(query, res["products"], res.get("cheapest"))
             return res.get("voice_summary", "প্রোডাক্ট খোঁজা সম্পন্ন হয়েছে।")
 
         # 8c. CHEAPEST PRODUCT QUERY
         if intent == Intent.CHEAPEST_PRODUCT:
+            _PC = _get_product_controller()
+            if _PC is None:
+                return "দুঃখিত, প্রোডাক্ট সার্চ এজেন্ট বর্তমানে উপলব্ধ নেই।"
             products = params.get("products") or self.context.last_products
             if not products:
                 query = params.get("query", "products")
-                products = ProductController.search_products(query)
+                products = _PC.search_products(query)
                 if products:
                     self.context.set_product_context(query, products)
 
             if products:
-                cheapest = ProductController.get_cheapest_product(products)
+                cheapest = _PC.get_cheapest_product(products)
                 if cheapest:
                     self.context.selected_product = cheapest
                     return (
@@ -315,6 +360,9 @@ class HybridDecisionEngine:
 
         # 8d. PRODUCT SPECIFICATIONS & FEATURES
         if intent == Intent.PRODUCT_SPECS:
+            _PC = _get_product_controller()
+            if _PC is None:
+                return "দুঃখিত, প্রোডাক্ট সার্চ এজেন্ট বর্তমানে উপলব্ধ নেই।"
             product = params.get("product") or self.context.selected_product
             if not product and self.context.last_products:
                 product = self.context.last_products[0]
@@ -322,13 +370,13 @@ class HybridDecisionEngine:
             if not product:
                 query = params.get("query", "")
                 if query:
-                    prods = ProductController.search_products(query)
+                    prods = _PC.search_products(query)
                     if prods:
                         product = prods[0]
                         self.context.set_product_context(query, prods, product)
 
             if product:
-                details = ProductController.extract_product_details(product)
+                details = _PC.extract_product_details(product)
                 return (
                     f"{details['name']}-এর স্পেসিফিকেশন ও ফিচার:\n"
                     f"{details['specs_text']}। "
@@ -338,26 +386,32 @@ class HybridDecisionEngine:
 
         # 8e. COMPARE PRODUCTS
         if intent == Intent.COMPARE_PRODUCTS:
+            _PC = _get_product_controller()
+            if _PC is None:
+                return "দুঃখিত, প্রোডাক্ট সার্চ এজেন্ট বর্তমানে উপলব্ধ নেই।"
             products = params.get("products") or self.context.last_products
             query = params.get("query") or self.context.last_product_search or "products"
             if not products:
-                products = ProductController.search_products(query)
+                products = _PC.search_products(query)
                 if products:
                     self.context.set_product_context(query, products)
 
             if products:
-                comp = ProductController.compare_product_prices(products, query=query)
+                comp = _PC.compare_product_prices(products, query=query)
                 return comp.summary_bn
             return "তুলনা করার মতো পর্যাপ্ত প্রোডাক্ট পাওয়া যায়নি।"
 
         # 8f. OPEN PRODUCT WEBPAGE
         if intent == Intent.OPEN_PRODUCT_PAGE:
+            _PC = _get_product_controller()
+            if _PC is None:
+                return "দুঃখিত, প্রোডাক্ট সার্চ এজেন্ট বর্তমানে উপলব্ধ নেই।"
             product = params.get("product") or self.context.selected_product
             if not product and self.context.last_products:
                 product = self.context.last_products[0]
 
             if product:
-                success, msg = ProductController.open_product_page(product)
+                success, msg = _PC.open_product_page(product)
                 return msg
             return "ওপেন করার জন্য কোনো প্রোডাক্ট নির্বাচন করা নেই।"
 
