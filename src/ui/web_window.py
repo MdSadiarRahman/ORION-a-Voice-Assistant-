@@ -291,7 +291,14 @@ def launch_web_window():
 
     window_ref[0] = window
     bridge._set_window(window)
-    window.events.closing += lambda: agent.stop()
+
+    def on_closing():
+        # Clear window references immediately so agent.stop() never calls evaluate_js on a closing window
+        window_ref[0] = None
+        bridge._set_window(None)
+        threading.Thread(target=agent.stop, daemon=True).start()
+
+    window.events.closing += on_closing
 
     # Start battery polling thread
     _start_battery_poll(bridge)
@@ -308,10 +315,12 @@ def launch_web_window():
             bridge._js(f"window.onAgentStateChange && window.onAgentStateChange({init_state})")
         except Exception as e:
             print(f"[Bridge] on_loaded error: {e}", flush=True)
-        except Exception as e:
-            print(f"[Bridge] on_loaded error: {e}", flush=True)
 
     window.events.loaded += lambda: threading.Thread(target=on_loaded, daemon=True).start()
 
     print(f"[Bridge] Loading: {INDEX_HTML}", flush=True)
     webview.start(debug=False)
+    # Ensure agent stops cleanly after window loop exits
+    window_ref[0] = None
+    bridge._set_window(None)
+    agent.stop()
