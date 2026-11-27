@@ -46,11 +46,22 @@ class MediaController:
     @classmethod
     def play_youtube(cls, song_name: str) -> Tuple[bool, str, str, str]:
         """
-        Resolves the target video and opens it with autoplay=1 in the browser.
-        Updates internal media playback state.
+        Starts the selected YouTube video in a visible persistent browser and verifies playback.
         Returns: (success, video_title, message, watch_url)
         """
-        success, title, msg, watch_url = SearchHelper.play_youtube_song(song_name)
+        try:
+            from src.playwright_agent.playwright_controller import PlaywrightController
+        except ImportError:
+            return SearchHelper.play_youtube_song(song_name)
+
+        try:
+            result = PlaywrightController.play_youtube_and_verify(song_name)
+        except Exception as exc:
+            return False, song_name, f"YouTube playback চালু করা যায়নি: {exc}", ""
+        success = bool(result.get("success"))
+        title = str(result.get("title") or song_name)
+        msg = str(result.get("message") or "ইউটিউব playback যাচাই করা যায়নি।")
+        watch_url = str(result.get("url") or "")
         if success:
             cls._current_title = title
             cls._current_url = watch_url

@@ -76,18 +76,41 @@ class SearchHelper:
     @classmethod
     def play_youtube_song(cls, query: str) -> Tuple[bool, str, str, str]:
         """
-        Finds the exact video for the query and opens it in the browser with autoplay=1.
+        Opens a YouTube video/search URL as a browser-only fallback.
+        Browser navigation alone is not treated as verified playback.
         Returns: (success, video_title, message, watch_url)
         """
         try:
             watch_url, title = cls.resolve_youtube_watch_url(query)
-            webbrowser.open(watch_url)
-            msg = f"ইউটিউবে '{title}' প্লে করা হচ্ছে।"
-            return True, title, msg, watch_url
+            opened = webbrowser.open(watch_url)
+            if not opened:
+                return False, title, "ডিফল্ট ব্রাউজার YouTube URL খোলেনি।", watch_url
+            if "watch?v=" not in watch_url:
+                return (
+                    False,
+                    title,
+                    "YouTube search results খোলা হয়েছে, কিন্তু নির্দিষ্ট ভিডিও পাওয়া যায়নি।",
+                    watch_url,
+                )
+            return (
+                False,
+                title,
+                "ভিডিওর পেজ খোলা হয়েছে, কিন্তু browser-only mode-এ playback যাচাই করা যায়নি।",
+                watch_url,
+            )
         except Exception as e:
             fallback_url = f"https://www.youtube.com/results?search_query={urllib.parse.quote_plus(query)}"
-            webbrowser.open(fallback_url)
-            return False, query, f"ইউটিউব ওপেন করা হয়েছে ({e})", fallback_url
+            try:
+                opened = webbrowser.open(fallback_url)
+            except Exception as fallback_error:
+                return (
+                    False,
+                    query,
+                    f"YouTube playback শুরু করা যায়নি; browser fallback-ও ব্যর্থ হয়েছে: {fallback_error}",
+                    fallback_url,
+                )
+            detail = "search page খোলা হয়েছে" if opened else "browser URL খুলতে পারেনি"
+            return False, query, f"YouTube playback শুরু করা যায়নি; {detail}: {e}", fallback_url
 
     @staticmethod
     def open_website(url: str) -> str:

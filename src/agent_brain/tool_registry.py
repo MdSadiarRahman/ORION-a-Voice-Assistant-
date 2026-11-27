@@ -206,7 +206,13 @@ class ToolRegistry:
                 from src.intelligence.action_verifier import ActionVerifier
                 song = parameters.get("song_name") or parameters.get("query", "bangla top song")
                 succ, title, msg, watch_url = MediaController.play_youtube(song)
-                ver, ver_msg = ActionVerifier.verify_youtube_playback(watch_url, title)
+                if not succ:
+                    return False, {"url": watch_url, "title": title}, msg
+                ver, ver_msg = ActionVerifier.verify_youtube_playback(
+                    watch_url,
+                    title,
+                    playback_verified=True,
+                )
                 return ver, {"url": watch_url, "title": title}, ver_msg
 
             return False, None, f"অজানা টুল: {tool_name}"

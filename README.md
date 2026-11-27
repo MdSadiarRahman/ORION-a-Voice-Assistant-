@@ -22,7 +22,7 @@ VoiceMate হলো উইন্ডোজ ল্যাপটপ ও ডেস্
    - GUI-তে **"📑 ডকলিং"** বাটনে ক্লিক করে ফাইল নির্বাচন ও কনভার্সন করার সুবিধা।
 
 3. **ডিটারমিনিস্টিক ওয়েব অটোমেশন ও মিডিয়া প্লেয়ার (Powered by Microsoft Playwright)**:
-   - YouTube কমান্ডে ভিডিও বা সার্চ পেজ খোলে; autoplay সব সাইট/ব্রাউজার পরিস্থিতিতে নিশ্চিত নয়।
+   - YouTube কমান্ডে persistent visible browser-এ ভিডিও চালু করে এবং browser-এর video state ও mute status যাচাই করে; YouTube consent, network, OS volume ও audio device-এর ওপর শব্দ শোনা নির্ভর করে।
    - Playwright ও browser binary পাওয়া গেলে নির্দিষ্ট URL-এর screenshot তুলে সেভ করে; fallback mode কেবল default browser-এ URL খোলে, screenshot নিতে পারে না।
    - WhatsApp Web-এর persistent profile local-এ সংরক্ষিত হয়; লগইন ব্যবহারকারীকে নিজে করতে হবে।
    - GUI-তে **"⚡ অটোমেশন"** বাটনে ক্লিক করে সরাসরি যেকোনো অটোমেশন নির্দেশ দেওয়া যায়।

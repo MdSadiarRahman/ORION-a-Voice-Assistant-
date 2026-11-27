@@ -69,6 +69,23 @@ class TestIntelligentAgent(unittest.TestCase):
             )
             self.assertIn("ইউটিউবে", reply)
 
+    def test_failed_playback_is_not_reported_as_success(self):
+        with patch.object(
+            MediaController,
+            "play_youtube",
+            return_value=(
+                False,
+                "Kamariya",
+                "YouTube playback যাচাই করা যায়নি।",
+                "https://www.youtube.com/results?search_query=Kamariya",
+            ),
+        ):
+            intent_res, reply = self.engine.process_query("Play Kamariya song")
+
+        self.assertEqual(intent_res.intent, Intent.PLAY_MUSIC)
+        self.assertIn("যাচাই করা যায়নি", reply)
+        self.assertFalse(self.engine.context.is_media_playing)
+
     def test_youtube_multi_turn_workflow(self):
         """2. Multi-turn YouTube conversational interaction."""
         # Turn 1: User says "Open YouTube"
@@ -143,9 +160,19 @@ class TestIntelligentAgent(unittest.TestCase):
     def test_action_verifier(self):
         """5. Action Verifier accurately validates action outcomes."""
         # Valid watch URL
-        ok, msg = ActionVerifier.verify_youtube_playback("https://www.youtube.com/watch?v=12345", "Test Song")
+        ok, msg = ActionVerifier.verify_youtube_playback(
+            "https://www.youtube.com/watch?v=12345",
+            "Test Song",
+            playback_verified=True,
+        )
         self.assertTrue(ok)
         self.assertIn("সফলভাবে চালু হয়েছে", msg)
+
+        opened_only, _ = ActionVerifier.verify_youtube_playback(
+            "https://www.youtube.com/watch?v=12345",
+            "Test Song",
+        )
+        self.assertFalse(opened_only)
 
         # Empty watch URL
         bad_ok, bad_msg = ActionVerifier.verify_youtube_playback("", "Test Song")

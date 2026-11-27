@@ -246,7 +246,15 @@ class HybridDecisionEngine:
         if intent == Intent.PLAY_MUSIC:
             song = params.get("song_name") or "bangla top song"
             success, title, msg, watch_url = MediaController.play_youtube(song)
-            verified, verify_msg = ActionVerifier.verify_youtube_playback(watch_url, title)
+            if not success:
+                return msg or "ইউটিউবে গানটি চালু করা যায়নি।"
+            verified, verify_msg = ActionVerifier.verify_youtube_playback(
+                watch_url,
+                title,
+                playback_verified=True,
+            )
+            if not verified:
+                return verify_msg
             self.context.set_media_state(title, is_playing=verified)
             return verify_msg
 

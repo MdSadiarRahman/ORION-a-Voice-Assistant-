@@ -13,6 +13,7 @@ from src.helpers.voice_recognizer_helper import VoiceRecognizerHelper
 from src.helpers.desktop_automation_helper import DesktopAutomationHelper
 from src.helpers.battery_helper import BatteryHelper
 from src.helpers.search_helper import SearchHelper
+from src.helpers.media_controller import MediaController
 from src.browser_agent.browser_task_runner import BrowserTaskRunner
 from src.document_agent.document_task_runner import DocumentTaskRunner
 from src.docling_agent.docling_task_runner import DoclingTaskRunner
@@ -525,8 +526,11 @@ class AgentService:
                     clean_q = clean_q.replace(w, "").strip()
                 if not clean_q:
                     clean_q = query
-                success, title, msg, watch_url = SearchHelper.play_youtube_song(clean_q)
-                self.speak(f"ইউটিউবে '{title}' প্লে করা হচ্ছে।", start_listening_after=True)
+                success, title, msg, watch_url = MediaController.play_youtube(clean_q)
+                self.speak(
+                    msg if not success else f"ইউটিউবে '{title}' প্লে করা হচ্ছে।",
+                    start_listening_after=True,
+                )
             else:
                 SearchHelper.search_in_youtube(query)
                 self.speak(f"আমি ইউটিউবে {query} সার্চ করছি।", start_listening_after=True)
