@@ -88,6 +88,12 @@ class CommandProcessor:
         """
         Main command parser and executor for the laptop agent.
         """
+        from src.intelligence.requested_feature_router import RequestedFeatureRouter
+        return RequestedFeatureRouter.process(command)
+
+    @classmethod
+    def _process_legacy_command(cls, command: str) -> str:
+        """Retained implementation for reference; no longer exposed to VoiceMate."""
         cmd = cls.convert_bengali_digits(command.lower().strip())
 
         # Greeting check
@@ -466,50 +472,8 @@ class CommandProcessor:
         """
         Determines if an utterance is intended as an assistant command.
         """
-        if not command or not command.strip():
-            return False
-
-        # Check with FastCommandRouter for natural variations (e.g. "I want to listen to Kamariya")
-        try:
-            from src.intelligence.fast_router import FastCommandRouter
-            if FastCommandRouter.match(command) is not None:
-                return True
-        except Exception:
-            pass
-
-        cmd = cls.convert_bengali_digits(command.lower().strip())
-        keywords = [
-            "কল", "call", "ফোন", "phone", "টাইপিং", "টাইপ", "typing", "উপরে", "up",
-            "নিচে", "down", "সার্চ", "search", "ওপেন", "open", "খুলো", "খোলো",
-            "বন্ধ", "stop", "exit", "close", "খুঁজো", "দেখাও", "দেখবো", "ইউটিউব",
-            "youtube", "গুগল", "google", "চার্জ", "battery", "ব্যাটারি", "সময়", "সময়",
-            "time", "তারিখ", "date", "ছবি", "ক্যামেরা", "camera", "ব্রাউজার", "browse",
-            "পিডিএফ", "pdf", "ডকুমেন্ট", "document", "প্লে", "play", "গান", "ভিডিও",
-            "স্ক্রিনশট", "screenshot", "অটোমেশন", "automation", "হোয়াটসঅ্যাপ", "whatsapp",
-            "ক্যানভাস", "canvas", "ওপেনহ্যান্ডস", "openhands", "অডিট", "audit", "রিভিউ",
-            "review", "গিট", "git", "ট্রি", "tree", "টার্মিনাল", "terminal",
-            "রেপো", "repo", "ম্যাপ", "map", "এডিট", "edit", "এইডার", "aider", "রোলব্যাক", "rollback",
-            "ডকলিং", "docling", "ওয়ার্ড", "docx", "পাওয়ারপয়েন্ট", "pptx", "এক্সেল", "xlsx", "চাংক", "chunk",
-            "এনএইটেন", "n8n", "ওয়ার্কফ্লো", "workflow", "ওয়েবহুক", "webhook", "নোশন", "notion",
-            "এপিআই", "api", "ফাস্টএপিআই", "fastapi", "সোয়েগার", "swagger",
-            "ল্যাংগ্রাফ", "langgraph", "মাল্টি-এজেন্ট", "ব্রেন", "brain", "গ্রাফ", "graph",
-            "মেসেজ", "এসএমএস", "sms", "চালাও", "বাজাও", "শোনাও", "ছাড়ো", "শুনবো", "সং", "song", "মিউজিক", "music",
-            "ল্যাপটপ", "laptop", "প্রাইস", "price", "কম্পেয়ার", "compare", "ফিচার", "features", "স্পেক", "specs",
-            "স্যামসাং", "samsung", "এইচপি", "hp", "টাকা", "taka", "বাজেট", "budget", "cheapest", "পণ্য", "product",
-            "অ্যাসাইনমেন্ট", "assignment", "সলভ", "solve", "সমাধান", "website", "ওয়েবসাইট", "বানিয়ে", "রিসার্চ", "research", "রিপোর্ট", "report"
-        ]
-
-        if any(kw in cmd for kw in keywords):
-            return True
-
-        digits = re.sub(r"[^0-9]", "", cmd)
-        if len(digits) == 11:
-            return True
-
-        if len(cmd.split()) <= 2:
-            return True
-
-        return False
+        from src.intelligence.requested_feature_router import RequestedFeatureRouter
+        return RequestedFeatureRouter.is_request_in_scope(command)
 
     @staticmethod
     def is_greeting(command: str) -> bool:

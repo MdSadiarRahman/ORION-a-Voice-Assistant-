@@ -6,8 +6,8 @@ Optimized for 8GB RAM systems with low context budgeting and fast timeouts.
 """
 import json
 import time
-import urllib.request
 import urllib.error
+import urllib.request
 from typing import Optional, Dict, Any, List
 
 
@@ -136,3 +136,47 @@ Schema:
             pass
 
         return None
+
+    def answer_from_context(self, question: str, evidence: str) -> Optional[str]:
+        """Answers using only locally supplied document passages."""
+        if not self.is_available():
+            return None
+
+        model_name = self._active_model or self.preferred_model
+        payload = {
+            "model": model_name,
+            "messages": [
+                {
+                    "role": "system",
+                    "content": (
+                        "Use the supplied document passages as evidence. If they contain a "
+                        "question or exercise but no explicit answer, solve it and clearly label "
+                        "the response as a solution derived from the document. Do not present "
+                        "unsupported details as document facts; say when evidence is insufficient. "
+                        "Reply in the user's language and cite the source labels."
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": f"Question:\n{question}\n\nDocument passages:\n{evidence}",
+                },
+            ],
+            "stream": False,
+            "think": False,
+            "options": {"temperature": 0.1, "num_ctx": 4096, "num_predict": 500},
+        }
+
+        try:
+            request = urllib.request.Request(
+                f"{self.host}/api/chat",
+                data=json.dumps(payload).encode("utf-8"),
+                headers={"Content-Type": "application/json", "User-Agent": "VoiceMate/2.0"},
+            )
+            with urllib.request.urlopen(request, timeout=self.timeout) as response:
+                if response.status != 200:
+                    return None
+                result = json.loads(response.read().decode("utf-8"))
+            answer = result.get("message", {}).get("content", "").strip()
+            return answer or None
+        except (urllib.error.URLError, TimeoutError, OSError, json.JSONDecodeError, KeyError, TypeError):
+            return None

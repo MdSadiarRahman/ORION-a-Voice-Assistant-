@@ -1,106 +1,19 @@
 # VoiceMate - Laptop Voice Assistant Agent (Desktop Edition)
 **ভয়েস মেট - ল্যাপটপ ভয়েস অ্যাসিস্ট্যান্ট এজেন্ট**
 
-VoiceMate হলো উইন্ডোজ ল্যাপটপ ও ডেস্কটপের জন্য তৈরি একটি স্বয়ংক্রিয় কৃত্রিম বুদ্ধিমত্তা সম্পন্ন ভয়েস অ্যাসিস্ট্যান্ট এজেন্ট। এটি বাংলা ও ইংরেজি উভয় ভাষায় ভয়েস কমান্ড নিয়ে ল্যাপটপ নিয়ন্ত্রণ, হ্যান্ডস-ফ্রি টাইপিং, অটোনোমাস ব্রাউজার নেভিগেশন (Browser-Use 1.0), উচ্চগতির ডকুমেন্ট ও PDF ইন্টেলিজেন্স (PyMuPDF) এবং অ্যাপ্লিকেশন ম্যানেজমেন্ট করতে পারে।
+VoiceMate হলো Windows-এর জন্য বাংলা ও ইংরেজি voice assistant। সক্রিয় voice/text command path-এ এটি শুধু নিচের পাঁচটি কাজের জন্য তৈরি; এর বাইরে কমান্ড দিলে scope-এর সীমা জানায়। Repository-তে থাকা পুরোনো agent/module-গুলো বর্তমান voice route বা UI toolkit দিয়ে চালু হয় না।
 
 ---
 
-## 🚀 প্রধান সুবিধাসমূহ (Key Features)
+## 🚀 সক্রিয় সুবিধাসমূহ (Supported Features)
 
-1. **ডকুমেন্ট ও PDF ইন্টেলিজেন্স (Powered by PyMuPDF)**:
-   - *"ডকুমেন্ট পড়ো [ফাইলের নাম]"* বা *"পিডিএফ সামারি করো"* বললে ডকুমেন্ট পড়ে বাংলায় সারসংক্ষেপ বলে দেয়।
-   - **Pattern A (Text & Structure-Aware Markdown):** এলএলএম ও ভয়েস রিডিংয়ের জন্য নিখুঁত টেক্সট ও মার্কডাউন এক্সট্রাকশন (`doc.to_markdown()`)।
-   - **Pattern B (Table Extraction):** পৃষ্ঠায় থাকা ডেটা টেবিল ও ছক আলাদা করা (`page.find_tables()`)।
-   - **Pattern C (Page Rasterization):** ডকুমেন্টের পৃষ্ঠা ইমেজ আকারে রেন্ডার করে GUI প্রিভিউ বা ভিশন এনালাইসিস (`page.get_pixmap()`)।
-   - **Pattern D (Scanned OCR):** স্ক্যান করা ডকুমেন্টে OCR দিয়ে লেখা পড়া।
-   - GUI-তে **"📄 ডকুমেন্ট রিডার"** বাটনে ক্লিক করে ফাইল সিলেক্ট করার সুবিধা।
+1. **অ্যাপ খোলা:** Windows-এ ইনস্টল করা app খোঁজে; WhatsApp, Gmail, ChatGPT, Messenger, Telegram, VS Code/“Voice Code” ও Antigravity-এর মতো alias সমর্থন করে। স্থানীয় app না মিললে Gmail/ChatGPT/Messenger/Telegram/WhatsApp-এর web version খোলে।
+2. **ভয়েস টাইপিং:** *"টাইপিং মোড"* বললে বর্তমান active window-এর focus করা text field-এ কথাগুলো লেখা হয়। টাইপিং মোডে *"টাইপিং বন্ধ"* বললে মোড বন্ধ হয়। কোনো dictated phrase নিজে থেকে message send করে না; পাঠানোর আগে ব্যবহারকারীকে সংশ্লিষ্ট app-এ নিজে action নিতে হবে।
+3. **ওয়েব সার্চ:** Google বা YouTube-এ সার্চ করে browser-এ ফলাফল খোলে। এটি ওয়েবপেজ থেকে নিজে তথ্য পড়ে/যাচাই করে না এবং YouTube-এ গান চালায় না।
+4. **স্থানীয় PDF/Word প্রশ্নোত্তর:** অনুমোদিত Windows drive-এ `.pdf` ও `.docx` খুঁজে text extract করে প্রাসঙ্গিক অংশ নেয়। Ollama local model পাওয়া গেলে সেখানেই উত্তর তৈরি হয়; না হলে পাওয়া উদ্ধৃতি ও file/page/paragraph citation দেখায়। Cloud AI-তে document content পাঠানো হয় না। Scanned PDF-এ OCR না থাকলে text পাওয়া নাও যেতে পারে।
+5. **পণ্যের live দাম:** Star Tech, UCC, Global Brand ও Ryans-এর search listing থেকে নামের সঙ্গে মেলা BDT price, retailer link ও যাচাইয়ের সময় নেয়। কোনো source block/ব্যর্থ হলে তা জানায়; দুই বা তার বেশি source না পেলে multi-store comparison সম্পূর্ণ হয়েছে বলে দাবি করে না। দাম ও stock পরিবর্তনশীল—checkout-এর আগে retailer page যাচাই করুন।
 
-2. **মাল্টিমোডাল ডকুমেন্ট কনভার্সন ও RAG চাংকিং (Powered by IBM Docling)**:
-   - **Pattern A (Universal Conversion):** PDF ছাড়াও অফিস ডকুমেন্টস যেমন Word (`.docx`), PowerPoint (`.pptx`), Excel (`.xlsx`), HTML, EPUB, CSV ইত্যাদি পড়ে বাংলায় সারসংক্ষেপ বলে দেওয়া (`DocumentConverter()`)।
-   - **Pattern B (Advanced OCR & TableFormer):** টেবিল স্ট্রাকচার বিশ্লেষণ এবং গাণিতিক সমীকরণ ও ডেটা ছক এক্সট্রাক্ট করা।
-   - **Pattern C (Hybrid Semantic Chunking):** হেডিংয়ের হায়ারার্কিক্যাল কনটেক্সট বজায় রেখে RAG পাইপলাইন ও ভয়েসমেট মেমরির জন্য সেমান্টিক চাংক তৈরি (`HybridChunker`)।
-   - GUI-তে **"📑 ডকলিং"** বাটনে ক্লিক করে ফাইল নির্বাচন ও কনভার্সন করার সুবিধা।
-
-3. **ডিটারমিনিস্টিক ওয়েব অটোমেশন ও মিডিয়া প্লেয়ার (Powered by Microsoft Playwright)**:
-   - YouTube কমান্ডে persistent visible browser-এ ভিডিও চালু করে এবং browser-এর video state ও mute status যাচাই করে; YouTube consent, network, OS volume ও audio device-এর ওপর শব্দ শোনা নির্ভর করে।
-   - Playwright ও browser binary পাওয়া গেলে নির্দিষ্ট URL-এর screenshot তুলে সেভ করে; fallback mode কেবল default browser-এ URL খোলে, screenshot নিতে পারে না।
-   - WhatsApp Web-এর persistent profile local-এ সংরক্ষিত হয়; লগইন ব্যবহারকারীকে নিজে করতে হবে।
-   - GUI-তে **"⚡ অটোমেশন"** বাটনে ক্লিক করে সরাসরি যেকোনো অটোমেশন নির্দেশ দেওয়া যায়।
-
-4. **ডেভেলপার ক্যানভাস ও কোড ইন্টেলিজেন্স (Powered by OpenHands Agent Canvas)**:
-   - *"ওপেনহ্যান্ডস ক্যানভাস চালু করো"* বললে default `localhost:8000` পরীক্ষা করে; চালু OpenHands server থাকলেই browser খোলে, server নিজে install/start করে না।
-   - *"কোড অডিট করো"* বা *"কোড রিভিউ করো"* বললে dependency/build folder বাদ দিয়ে Python syntax পরীক্ষা করে; এটি পূর্ণ code-quality/security audit নয়।
-   - *"গিট স্ট্যাটাস দেখো"* বললে গিট রেপোজিটরিতে কোন কোন ফাইল মডিফাই হয়েছে তা বিশ্লেষণ করে জানিয়ে দেয়।
-   - *"ফাইল ট্রি দেখাও"* সীমিত depth-এর workspace tree দেয়। Terminal helper-এ কেবল `dir`, `ls`, `python --version`, `git status`, `echo ...` allowlist করা আছে; arbitrary shell command চলে না।
-   - Background task-এর event listener-রা local progress/completion/error পায়।
-
-5. **Local code editing & repository map (Aider-compatible format)**:
-   - User-provided `<<<<<<< SEARCH ... ======= ... >>>>>>> REPLACE` patch কেবল একটিমাত্র exact match পেলে apply হয়; আগে backup নেয় এবং workspace-এর বাইরের path block করে।
-   - *"রেপো ম্যাপ তৈরি করো"* Python AST থেকে সীমিতসংখ্যক file-এর top-level class/function map করে।
-   - Rollback-এর জন্য নির্দিষ্ট filename দিতে হয়; স্বয়ংক্রিয় Git commit বা AI-generated code edit হয় না।
-
-6. **অটোনোমাস ব্রাউজার এজেন্ট (Browser-Use 1.0 Powered Web Agent)**:
-   - Browser-Use dependency অনুপস্থিত থাকলে fallback কেবল অনুরোধ করা URL/search browser-এ খোলে; page content সংগ্রহের দাবি করে না।
-
-7. **হ্যান্ডস-ফ্রি টাইপিং মোড (Voice Typing / Dictation)**:
-   - *"টাইপিং মোড চালু করো"* বা *"টাইপ করো"* বললে টাইপিং মোড সক্রিয় হয়।
-   - যেকোনো উইন্ডোতে (Notepad, Word, Browser, WhatsApp ইত্যাদি) সরাসরি বাংলা/ইংরেজি টেক্সট পেস্ট/টাইপ করে।
-   - *"পাঠাও"* বা *"send"* বললে Enter চেপে মেসেজ পাঠায়।
-   - *"টাইপিং বন্ধ করো"* বা *"exit"* বললে টাইপিং শেষ হয়।
-
-8. **স্মার্ট ওয়েব সার্চ (Quick Web Search)**:
-   - গুগল ও ইউটিউব সার্চ (যেমন: *"ইউটিউবে বাংলা গান সার্চ করো"*, *"গুগলে কৃত্রিম বুদ্ধিমত্তা কি সার্চ করো"*).
-   - নির্দিষ্ট কিছু না বললে স্বয়ংক্রিয় ফলো-আপ প্রম্পট করে সার্চ বিষয় জেনে নেয়।
-
-9. **কলিং ও মেসেজিং (Calling & Messaging)**:
-   - কন্টাক্ট নাম ধরে অথবা সরাসরি ১১ ডিজিট বললে কল ডায়াল করা (`data/contacts.json` থেকে সার্চ করে)।
-   - হোয়াটসঅ্যাপ মেসেজিং ও উইন্ডোজ ডায়ালার সাপোর্ট।
-
-10. **স্ক্রিন ও সিস্টেম কন্ট্রোল (Desktop Accessibility & Automation)**:
-   - *"উপরে যাও"* / *"up"* -> স্ক্রল আপ (Scroll Up)
-   - *"নিচে নামো"* / *"down"* -> স্ক্রল ডাউন (Scroll Down)
-   - *"উইন্ডো বন্ধ করো"* বা *"কাটো"* -> বর্তমান উইন্ডো বন্ধ করা (Alt+F4)।
-
-11. **ল্যাপটপ ব্যাটারি ও হার্ডওয়্যার মনিটরিং (Battery & Power Monitor)**:
-   - উইন্ডোজ সিস্টেম API ব্যবহার করে রিয়েল-টাইম চার্জ ও চার্জার প্লাগড-ইন স্ট্যাটাস চেক।
-   - ব্যাটারি ২০% এর নিচে নামলে সতর্কবার্তা প্রদান।
-   - *"ল্যাপটপের চার্জ কত আছে?"* কমান্ডে বর্তমান চার্জ জানিয়ে দেওয়া।
-
-12. **ক্যামেরা ও ভিশন এনালাইসিস (Webcam & Vision AI)**:
-   - ল্যাপটপের ওয়েবক্যাম দিয়ে ছবি তোলা।
-   - ছবিতে থাকা লেখা (OCR) বা বস্তু শনাক্ত করে মুখে বলা।
-
-13. **আধুনিক ডেস্কটপ ইন্টারফেস (Desktop GUI)**:
-   - pywebview-ভিত্তিক HTML ইন্টারফেস, লাইভ স্ট্যাটাস, টেক্সট কমান্ড ও toolkit action।
-   - ভয়েস সার্ভিস চালু/বন্ধ এবং ব্যাটারি/ইঞ্জিন telemetry।
-
-14. **এনএইটেন ইউনিভার্সাল ওয়ার্কফ্লো অটোমেশন (Powered by n8n Workflow Automation)**:
-   - *"এনএইটেন চালু করো"* বা *"ওয়ার্কফ্লো রান করো [টাস্ক]"* বললে ব্যাকগ্রাউন্ডে n8n ওয়েবহুক ট্রিগার হয় বা স্টার্টার ক্যানভাস ওপেন হয়।
-   - **Pattern A (Synchronous Webhook Execution):** VoiceMate থেকে সরাসরি `POST http://localhost:5678/webhook/voicemate-action` এ JSON পেলোড পাঠানো হয় এবং n8n থেকে প্রাপ্ত ফলাফল বাংলায় মুখে বলে দেওয়া হয়।
-   - **Pattern B (Starter Workflow Generator):** n8n-এ এক ক্লিকে ইমপোর্ট করার উপযোগী স্বয়ংক্রিয় `data/n8n_workflows/voicemate_starter_workflow.json` জেনারেশন (Webhook -> Code / Logic -> Respond to Webhook)।
-   - **Pattern C (Offline Intent Fallback):** যদি n8n ব্যাকগ্রাউন্ডে চালু না থাকে, তবে ক্র্যাশ না করে লোকাল ফলব্যাকে ইমেইল, নোশন বা গুগল শিট অপারেশন সিমুলেট করে এবং ব্রাউজারে ক্যানভাস ওপেন করার গাইড দেয়।
-   - GUI-তে **"🔄 এনএইটেন"** বাটনে ক্লিক করে এক ক্লিকে যেকোনো অটোমেশন রান করার সুবিধা।
-
-15. **ফাস্টএপিআই গেটওয়ে ও রিয়েল-টাইম ওয়েবস্যকেট সার্ভার (Powered by FastAPI & Starlette)**:
-   - *"এপিআই সার্ভার চালু করো"* বা *"এপিআই ওপেন করো"* বললে ব্যাকগ্রাউন্ড থ্রেডে Uvicorn ASGI সার্ভার চালু হয়ে স্বয়ংক্রিয়ভাবে সোয়েগার ডক (`http://127.0.0.1:8080/docs`) খুলে যায়।
-   - **Pattern A (Command Execution & System Status API):** রিমোট ডিভাইস বা মোবাইল ড্যাশবোর্ড থেকে `POST /api/command` এ ভয়েস/টেক্সট কমান্ড পাঠিয়ে ফলাফল পাওয়া এবং `GET /api/system-status` দিয়ে রিয়েল-টাইম ব্যাটারি ও হার্ডওয়্যার অবস্থা জানা।
-   - **Pattern B (Real-Time Audio & Event WebSocket):** `/ws/voice-stream` ফুল-ডুপ্লেক্স রিয়েল-টাইম স্ট্রিমিং ও `/ws/events` দিয়ে লাইভ অ্যাকশন লগ সাবস্ক্রিপশন।
-   - **BackgroundTasks Runner:** ব্রাউজার ব্রাউজিং, প্লেরাইট অটোমেশন বা ডকলিং কনভার্সনের মতো দীর্ঘ টাস্ক ব্যাকগ্রাউন্ডে অফলোড করে রিয়েল-টাইম নন-ব্লকিং রেসপন্স নিশ্চিত করা।
-   - **CORS Middleware & OpenAPI Docs:** মোবাইল বা ওয়েব ড্যাশবোর্ডের সাথে সহজে ইন্টিগ্রেশনের জন্য ফুল CORS সাপোর্ট ও ইন্টারেক্টিভ Swagger UI।
-   - GUI-তে **"🚀 এপিআই"** বাটন দিয়ে এক ক্লিকে সার্ভার ও ডক ম্যানেজমেন্ট।
-
-16. **ল্যাংগ্রাফ সেন্ট্রাল ব্রেন ও মাল্টি-এজেন্ট স্টেট মেশিন (Powered by LangGraph)**:
-   - *"ব্রেন স্ট্যাটাস দেখাও"* বা *"ল্যাংগ্রাফ মাল্টি এজেন্ট চালাও"* বললে সেন্ট্রাল সুপারভাইজার গ্রাফ চালু হয়।
-   - **Master Multi-Agent Orchestrator:** সব সাবসিস্টেম (Browser-Use, Playwright, Docling, PyMuPDF, Aider, n8n, FastAPI)-কে সমন্বয় করে একক স্টেটফুল ব্রেন তৈরি করা।
-   - **Supervisor-Worker Pattern:** সুপারভাইজার নোড ব্যবহারকারীর উদ্দেশ্য শনাক্ত করে যথাযথ ওয়ার্কার নোডে রাউট করে।
-   - **Cyclic Execution & Self-Correction:** কোনো ওয়ার্কার ব্যর্থ হলে স্বয়ংক্রিয়ভাবে সুপারভাইজারে ফিরে এসে অল্টারনেট পাথ বা রিট্রাই করার সাইক্লিক রেজিলিয়েন্স।
-   - **Durable Checkpointing & Multi-Turn Memory:** `MemorySaver` ও `thread_id` সেশনের মাধ্যমে প্রতিটি কথোপকথন মনে রাখা ও কনটেক্সট ধারাবাহিকতা বজায় রাখা।
-   - **Human-In-The-Loop Safety Guardrails:** সংবেদনশীল অ্যাকশনের ক্ষেত্রে (ডিলিট, রোলব্যাক, সার্ভিস বন্ধ) ব্যবহারকারীকে মুখে প্রশ্ন করে অনুমতি নিয়ে নেওয়া।
-   - GUI-তে **"🧠 ব্রেন"** বাটন দিয়ে এক ক্লিকে মাল্টি-এজেন্ট স্টেট মেশিন ট্রিগার ও হিস্ট্রি দেখার সুবিধা।
-
-**Local website prototype:** website request দিলে VoiceMate static HTML/CSS/JavaScript project তৈরি করে এবং localhost preview যাচাই করে। এটি prototype—authentication, production backend বা real business/patient data সংযুক্ত নয়।
-
-**External integrations:** Live product prices ও cited internet research default build-এ উপলভ্য নয়; সেগুলোর জন্য data source/service configure করতে হবে। অনুপস্থিত integration-কে সফল দেখানোর পরিবর্তে task ব্যর্থতার কারণ জানানো হয়।
+Desktop UI-র quick actions ও toolkit-এও কেবল এই পাঁচটি সুবিধা দেখানো হয়। পুরোনো feature modules repository-তে রয়ে গেছে, কিন্তু বর্তমান VoiceMate command/UI route সেগুলো চালায় না।
 
 ---
 

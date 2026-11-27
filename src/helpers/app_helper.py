@@ -5,11 +5,12 @@ and common tools on the laptop.
 """
 import os
 import json
+import shutil
 import subprocess
 import time
 import unicodedata
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import List
 from src.helpers.app_preference_helper import AppPreferenceHelper
 from src.helpers.desktop_automation_helper import DesktopAutomationHelper
 
@@ -32,6 +33,13 @@ class AppHelper:
         "ইউটিউব": "https://www.youtube.com",
         "facebook": "https://www.facebook.com",
         "ফেসবুক": "https://www.facebook.com",
+        "gmail": "https://mail.google.com",
+        "জিমেইল": "https://mail.google.com",
+        "google mail": "https://mail.google.com",
+        "chatgpt": "https://chatgpt.com",
+        "চ্যাটজিপিটি": "https://chatgpt.com",
+        "messenger": "https://www.messenger.com",
+        "telegram": "https://web.telegram.org",
         "maps": "https://maps.google.com",
         "ম্যাপ": "https://maps.google.com",
         "settings": "start ms-settings:",
@@ -47,13 +55,13 @@ class AppHelper:
         "ফাইল": "explorer.exe",
         "মাই কম্পিউটার": "explorer.exe",
         "vscode": "code",
+        "visual studio code": "code",
         "কোড": "code",
         "paint": "mspaint.exe",
         "পেইন্ট": "mspaint.exe",
-        "whatsapp": "start whatsapp:",
-        "হোয়াটসঅ্যাপ": "start whatsapp:",
-        "হোয়াটসঅ্যাপ": "start whatsapp:",
-        "messenger": "https://www.messenger.com",
+        "whatsapp": "https://web.whatsapp.com",
+        "হোয়াটসঅ্যাপ": "https://web.whatsapp.com",
+        "হোয়াটসঅ্যাপ": "https://web.whatsapp.com",
         "ম্যাসেঞ্জার": "https://www.messenger.com",
         "cmd": "cmd.exe",
         "কমান্ড": "cmd.exe",
@@ -65,6 +73,10 @@ class AppHelper:
     APP_ALIASES = {
         "হোয়াটসঅ্যাপ": "whatsapp",
         "হোয়াটসঅ্যাপ": "whatsapp",
+        "জিমেইল": "gmail",
+        "গুগল মেইল": "gmail",
+        "চ্যাটজিপিটি": "chatgpt",
+        "ম্যাসেঞ্জার": "messenger",
         "টেলিগ্রাম": "telegram",
         "ভিএলসি": "vlc",
         "ওয়ার্ড": "word",
@@ -83,7 +95,27 @@ class AppHelper:
         "পেইন্ট": "paint",
         "কোড": "visual studio code",
         "ভিএস কোড": "visual studio code",
+        "ভয়েস কোড": "visual studio code",
+        "ভয়েস কোড": "visual studio code",
+        "অ্যান্টিগ্র্যাভিটি": "antigravity",
+        "এন্টিগ্র্যাভিটি": "antigravity",
+        "গুগল অ্যান্টিগ্র্যাভিটি": "antigravity",
         "vscode": "visual studio code",
+        "vs code": "visual studio code",
+        "voice code": "visual studio code",
+        "visual studio code": "visual studio code",
+        "chatgpt": "chatgpt",
+        "gpt": "chatgpt",
+        "gmail": "gmail",
+        "google mail": "gmail",
+        "messenger": "messenger",
+        "facebook messenger": "messenger",
+        "telegram": "telegram",
+        "gravity": "antigravity",
+        "google gravity": "antigravity",
+        "antigravity": "antigravity",
+        "anti gravity": "antigravity",
+        "anti-gravity": "antigravity",
     }
 
     _apps_cache: List[AppInfo] = []
@@ -176,14 +208,16 @@ class AppHelper:
                 return True
             if target_cmd.startswith("http://") or target_cmd.startswith("https://"):
                 import webbrowser
-                webbrowser.open(target_cmd)
-                return True
+                return bool(webbrowser.open(target_cmd))
             if target_cmd.startswith("start "):
                 subprocess.Popen(target_cmd, shell=True)
                 return True
             if os.path.exists(target_cmd):
                 os.startfile(target_cmd)
                 return True
+            executable = target_cmd.split(None, 1)[0]
+            if not shutil.which(executable):
+                return False
             subprocess.Popen(target_cmd, shell=True)
             return True
         except Exception:

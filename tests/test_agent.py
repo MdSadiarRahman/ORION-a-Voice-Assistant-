@@ -77,132 +77,45 @@ class TestVoiceMateAgent(unittest.TestCase):
         self.assertIn("charging", info)
         self.assertIn("is_laptop", info)
 
-    @patch("webbrowser.open")
-    @patch("subprocess.Popen")
-    def test_command_processor_queries(self, mock_popen, mock_web_open):
-        mock_web_open.return_value = True
+    @patch("src.intelligence.requested_feature_router.AppHelper.open_app")
+    @patch("src.intelligence.requested_feature_router.SearchHelper.search_in_google")
+    @patch("src.intelligence.requested_feature_router.SearchHelper.search_in_youtube")
+    def test_command_processor_queries(self, mock_youtube, mock_google, mock_open_app):
+        mock_open_app.return_value = "Gmail ওপেন করা হচ্ছে"
+        mock_google.return_value = "গুগলে সার্চ করা হচ্ছে"
+        mock_youtube.return_value = "ইউটিউবে সার্চ করা হচ্ছে"
 
-        # 1. Typing Mode
-        res_typing = CommandProcessor.process_command("টাইপ করা শুরু করো")
-        self.assertEqual(res_typing, "ACTION_START_TYPING")
+        self.assertEqual(
+            CommandProcessor.process_command("টাইপিং মোড চালু করো"),
+            "ACTION_START_TYPING",
+        )
+        self.assertEqual(
+            CommandProcessor.process_command("Gmail ওপেন করো"),
+            "Gmail ওপেন করা হচ্ছে",
+        )
+        mock_open_app.assert_called_once_with("Gmail")
 
-        # 2. Autonomous Browser Agent Task (Browser-Use 1.0)
-        res_browser = CommandProcessor.process_command("ব্রাউজারে গিয়ে ঢাকা বিশ্ববিদ্যালয়ের ওয়েবসাইট দেখো")
-        self.assertTrue(res_browser.startswith("ACTION_BROWSER_TASK|"))
-        self.assertIn("ঢাকা বিশ্ববিদ্যালয়", res_browser)
+        self.assertEqual(
+            CommandProcessor.process_command("গুগলে পাইথন সার্চ করো"),
+            "গুগলে সার্চ করা হচ্ছে",
+        )
+        mock_google.assert_called_once_with("পাইথন")
+        self.assertEqual(
+            CommandProcessor.process_command("ইউটিউবে গান সার্চ করো"),
+            "ইউটিউবে সার্চ করা হচ্ছে",
+        )
+        mock_youtube.assert_called_once_with("গান")
 
-        # 3. Document Intelligence Task (PyMuPDF)
-        res_doc = CommandProcessor.process_command("ডকুমেন্ট পড়ো test_sample.md")
-        self.assertTrue(res_doc.startswith("ACTION_DOCUMENT_TASK|"))
-        self.assertIn("test_sample.md", res_doc)
-
-        # 4. Docling Multimodal Document Intelligence & RAG Chunking
-        res_docling_word = CommandProcessor.process_command("ডকলিং দিয়ে ওয়ার্ড ফাইল পড়ো report.docx")
-        self.assertTrue(res_docling_word.startswith("ACTION_DOCLING_TASK|"))
-        self.assertIn("report.docx", res_docling_word)
-
-        res_docling_chunk = CommandProcessor.process_command("ডকুমেন্ট চাংক করো test_sample.md")
-        self.assertTrue(res_docling_chunk.startswith("ACTION_DOCLING_TASK|"))
-
-        # 5. Playwright Deterministic Automation (Media Playback, Screenshot, Session)
-        res_pw_play = CommandProcessor.process_command("ইউটিউবে রবীন্দ্রসংগীত প্লে করো")
-        self.assertTrue(res_pw_play.startswith("ACTION_PLAYWRIGHT_TASK|"))
-        self.assertIn("রবীন্দ্রসংগীত", res_pw_play)
-
-        res_pw_shot = CommandProcessor.process_command("ওয়েব স্ক্রিনশট নাও https://github.com")
-        self.assertTrue(res_pw_shot.startswith("ACTION_PLAYWRIGHT_TASK|"))
-
-        res_pw_session = CommandProcessor.process_command("হোয়াটসঅ্যাপ ওয়েব ওপেন করো")
-        self.assertTrue(res_pw_session.startswith("ACTION_PLAYWRIGHT_TASK|"))
-
-        # 5. OpenHands Developer Canvas & Workspace Tasks
-        res_canvas_launch = CommandProcessor.process_command("ওপেনহ্যান্ডস ক্যানভাস চালু করো")
-        self.assertTrue(res_canvas_launch.startswith("ACTION_CANVAS_TASK|"))
-
-        res_canvas_audit = CommandProcessor.process_command("কোড অডিট করো")
-        self.assertTrue(res_canvas_audit.startswith("ACTION_CANVAS_TASK|"))
-
-        res_canvas_git = CommandProcessor.process_command("গিট স্ট্যাটাস দেখো")
-        self.assertTrue(res_canvas_git.startswith("ACTION_CANVAS_TASK|"))
-
-        res_canvas_tree = CommandProcessor.process_command("ফাইল ট্রি দেখাও")
-        self.assertTrue(res_canvas_tree.startswith("ACTION_CANVAS_TASK|"))
-
-        # 6. Aider AI Pair Programming & Code Editing Tasks
-        res_coder_map = CommandProcessor.process_command("রেপো ম্যাপ তৈরি করো")
-        self.assertTrue(res_coder_map.startswith("ACTION_CODER_TASK|"))
-
-        res_coder_edit = CommandProcessor.process_command("কোড এডিট করো")
-        self.assertTrue(res_coder_edit.startswith("ACTION_CODER_TASK|"))
-
-        res_coder_rb = CommandProcessor.process_command("কোড রোলব্যাক করো")
-        self.assertTrue(res_coder_rb.startswith("ACTION_CODER_TASK|"))
-
-        res_coder_raw = CommandProcessor.process_command("<<<<<<< SEARCH\nfoo\n=======\nbar\n>>>>>>> REPLACE")
-        self.assertTrue(res_coder_raw.startswith("ACTION_CODER_TASK|"))
-
-        # 7. n8n Enterprise Workflow Automation Tasks
-        res_n8n_open = CommandProcessor.process_command("এনএইটেন ওপেন করো")
-        self.assertTrue(res_n8n_open.startswith("ACTION_N8N_TASK|"))
-
-        res_n8n_flow = CommandProcessor.process_command("অটোমেশন ফ্লো চালাও ইমেইল পাঠাও")
-        self.assertTrue(res_n8n_flow.startswith("ACTION_N8N_TASK|"))
-
-        res_n8n_notion = CommandProcessor.process_command("নোশনে পাঠাও আজকের মিটিং নোট")
-        self.assertTrue(res_n8n_notion.startswith("ACTION_N8N_TASK|"))
-
-        # 8. FastAPI Gateway Commands
-        res_api_open = CommandProcessor.process_command("এপিআই ওপেন করো")
-        self.assertTrue(res_api_open.startswith("ACTION_API_GATEWAY_TASK|"))
-
-        res_api_status = CommandProcessor.process_command("এপিআই স্ট্যাটাস দেখো")
-        self.assertTrue(res_api_status.startswith("ACTION_API_GATEWAY_TASK|"))
-
-        res_api_docs = CommandProcessor.process_command("সোয়েগার ডক দেখাও")
-        self.assertTrue(res_api_docs.startswith("ACTION_API_GATEWAY_TASK|"))
-
-        # 9. LangGraph Brain Commands
-        res_brain_status = CommandProcessor.process_command("ব্রেন স্ট্যাটাস দেখাও")
-        self.assertTrue(res_brain_status.startswith("ACTION_BRAIN_TASK|"))
-
-        res_brain_hist = CommandProcessor.process_command("ব্রেন হিস্ট্রি দেখো")
-        self.assertTrue(res_brain_hist.startswith("ACTION_BRAIN_TASK|"))
-
-        res_brain_run = CommandProcessor.process_command("ল্যাংগ্রাফ মাল্টি এজেন্ট চালাও")
-        self.assertTrue(res_brain_run.startswith("ACTION_BRAIN_TASK|"))
-
-        # 10. YouTube & Google Searches
-        res_yt = CommandProcessor.process_command("ইউটিউবে গান সার্চ করো")
-        self.assertIn("ইউটিউবে", res_yt)
-        self.assertIn("সার্চ করা হচ্ছে", res_yt)
-
-        res_gg = CommandProcessor.process_command("গুগলে পাইথন কি সার্চ করো")
-        self.assertIn("গুগলে", res_gg)
-        self.assertIn("সার্চ করা হচ্ছে", res_gg)
-
-        # 5. Call by keyword
-        res_call = CommandProcessor.process_command("বাবা কে কল দাও")
-        self.assertIn("কল করা হচ্ছে", res_call)
-
-        # 6. Direct 11-digit call
-        res_direct_num = CommandProcessor.process_command("০১৭১১০০০০০১")
-        self.assertIn("01711000001", res_direct_num)
-
-        # 7. Scrolling
-        self.assertEqual(CommandProcessor.process_command("উপরে যাও"), "উপরে যাওয়া হচ্ছে")
-        self.assertEqual(CommandProcessor.process_command("নিচে নামো"), "নিচে যাওয়া হচ্ছে")
-
-        # 8. Battery
-        res_bat = CommandProcessor.process_command("ল্যাপটপের চার্জ কত আছে")
-        self.assertIn("চার্জ", res_bat)
-
-        # 9. Greetings
-        self.assertTrue(CommandProcessor.is_greeting("হ্যালো"))
-        self.assertTrue(CommandProcessor.is_greeting("hello"))
-
-        # 10. App opening
-        res_app = CommandProcessor.process_command("নোটপ্যাড ওপেন করো")
-        self.assertIn("notepad ওপেন করা হচ্ছে", res_app)
+        self.assertEqual(
+            CommandProcessor.process_command("HP laptop er dam koto"),
+            "ACTION_PRODUCT_PRICE|hp laptop",
+        )
+        self.assertTrue(
+            CommandProcessor.process_command("answer from report.pdf what is revenue")
+            .startswith("ACTION_DOCUMENT_QA|")
+        )
+        self.assertIn("শুধু app খোলা", CommandProcessor.process_command("play music"))
+        self.assertIn("শুধু app খোলা", CommandProcessor.process_command("ল্যাপটপের চার্জ কত আছে"))
 
     def test_desktop_automation_clipboard(self):
         text = "পরীক্ষামূলক বাংলা লেখা"
@@ -562,7 +475,7 @@ def multiply(a, b):
 
         # 3. SMS routing in CommandProcessor
         cmd_res = CommandProcessor.process_command("মেসেজ পাঠাও ০১৭১১০০০০০১ কেমন আছেন")
-        self.assertIn("উইন্ডো খোলা হয়েছে", cmd_res)
+        self.assertIn("শুধু app খোলা", cmd_res)
 
 if __name__ == "__main__":
     unittest.main()

@@ -274,57 +274,43 @@ async function sendCommand() {
 
 // ── Quick Action Chip ───────────────────────────────────────────────
 async function quickAction(prompt) {
-  playUiTick(800);
-  appendChat('আপনি', prompt, 'user');
-  try {
-    await safeApi('trigger_quick_action', prompt);
-  } catch (e) {
-    appendChat('SYSTEM', 'Quick Action ব্যর্থ: ' + e, 'system');
+  if (prompt === 'Typing Mode') {
+    playUiTick(800);
+    appendChat('আপনি', 'Typing Mode', 'user');
+    try {
+      await safeApi('send_command', 'typing mode');
+    } catch (e) {
+      appendChat('SYSTEM', 'Typing Mode চালু করা যায়নি: ' + e, 'system');
+    }
+    return;
   }
+
+  const actions = {
+    'Open App': ['open_app', 'কোন অ্যাপ খুলবেন?'],
+    'Search Web': ['web_search', 'কী সার্চ করবেন?'],
+    'Document Q&A': ['document_qa', 'প্রশ্ন এবং চাইলে PDF/DOCX ফাইলের নাম দিন:'],
+    'Product Price': ['product_price', 'কোন পণ্যের দাম জানতে চান?']
+  };
+  const action = actions[prompt];
+  if (!action) return;
+  await runToolkit(action[0], action[1]);
 }
 
-// ── Toolkit Action Trigger ──────────────────────────────────────────
-const AGENT_BADGE_MAP = {
-  browser_agent: 'badge-browser',
-  web_automation: 'badge-browser',
-  assignment_solver: 'badge-doc',
-  docling_converter: 'badge-doc',
-  doc_reader: 'badge-doc',
-  website_builder: 'badge-se',
-  ai_coder: 'badge-se',
-  developer_canvas: 'badge-se',
-  product_research: 'badge-enterprise',
-  n8n_workflow: 'badge-enterprise',
-  api_gateway: 'badge-enterprise',
-  langgraph_brain: 'badge-enterprise'
-};
-
+// ── Supported capability action ────────────────────────────────────
 async function runToolkit(agentName, promptTitle) {
-  playUiTick(650);
   const param = window.prompt(promptTitle || 'টাস্ক লিখুন:', '');
-  if (param === null) return;
-
-  const badgeId = AGENT_BADGE_MAP[agentName];
-  const badgeEl = badgeId ? document.getElementById(badgeId) : null;
-  if (badgeEl) {
-    badgeEl.className = 'mc-badge active font-mono';
-    badgeEl.textContent = 'ACTIVE';
-  }
-
-  appendLog('AGENT', `টুলকিট সক্রিয়: [${agentName}] — "${param}"`);
+  if (param === null || !param.trim()) return;
+  playUiTick(650);
+  appendChat('আপনি', `${promptTitle || ''} ${param}`.trim(), 'user');
   switchTab(0); // View agent feedback in Tab 0
 
   try {
-    await safeApi('run_toolkit_action', agentName, param);
+    const result = await safeApi('run_toolkit_action', agentName, param.trim());
+    if (result && result.status === 'error') {
+      appendChat('SYSTEM', result.message || 'এই কাজটি সমর্থিত নয়।', 'system');
+    }
   } catch (e) {
-    appendLog('ERROR', `টুলকিট চালনায় ত্রুটি: ${e}`);
-  } finally {
-    setTimeout(() => {
-      if (badgeEl) {
-        badgeEl.className = 'mc-badge ready font-mono';
-        badgeEl.textContent = 'READY';
-      }
-    }, 4500);
+    appendChat('SYSTEM', `কাজটি শুরু করা যায়নি: ${e}`, 'system');
   }
 }
 
@@ -374,19 +360,6 @@ window.appendChat = appendChat;
 window.appendLog = appendLog;
 
 window.updateTelemetry = function(data) {
-  if (data.battery !== undefined && data.battery !== null) {
-    const pct = document.getElementById('batPct');
-    if (pct) pct.textContent = data.battery + '%';
-
-    const charge = document.getElementById('batCharge');
-    if (charge) charge.style.display = data.charging ? 'inline' : 'none';
-  }
-
-  if (data.engine) {
-    const engName = document.getElementById('engineName');
-    if (engName) engName.textContent = data.engine;
-  }
-
   if (data.is_running !== undefined) {
     setServiceState(data.is_running);
   }
@@ -513,7 +486,7 @@ function toggleAutoScroll() {
 async function safeApi(method, ...args) {
   if (!window.pywebview || !window.pywebview.api) {
     if (method === 'get_telemetry') {
-      return { battery: 92, charging: false, engine: '⚡ Gemini 3.8 Flash', is_running: false };
+      return { is_running: false };
     }
     return { status: 'mock' };
   }

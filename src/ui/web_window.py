@@ -5,10 +5,9 @@ Replaces Tkinter UI with HTML5/CSS3/JS rendered natively via pywebview.
 VoiceMateBridge exposes Python methods to JavaScript via js_api.
 Python pushes real-time updates to the web UI via window.evaluate_js().
 
-STRICT: Do NOT modify src/intelligence/, src/helpers/, or agent_service.py.
+The bridge exposes only the currently supported VoiceMate capabilities.
 """
 
-import os
 import sys
 import json
 import threading
@@ -34,15 +33,6 @@ def _import_agent():
     from src.agent_service import AgentService
     return AgentService
 
-def _import_battery():
-    try:
-        sys.path.insert(0, str(ROOT))
-        from src.helpers.battery_helper import BatteryHelper
-        return BatteryHelper
-    except ImportError:
-        return None
-
-
 # ══════════════════════════════════════════════════════════════════════════════
 #  VoiceMateBridge — exposed to JavaScript as window.pywebview.api
 # ══════════════════════════════════════════════════════════════════════════════
@@ -56,7 +46,6 @@ class VoiceMateBridge:
     def __init__(self, agent, window_ref=None):
         self._agent = agent
         self._window = window_ref          # set after webview.create_window()
-        self._battery_helper = _import_battery()
 
     # ── Internal: set window ref after creation ───────────────────────────────
     def _set_window(self, window):
@@ -109,86 +98,38 @@ class VoiceMateBridge:
             return {"status": "error", "message": str(e)}
 
     def trigger_quick_action(self, action_text: str) -> dict:
-        """Execute a quick-action chip prompt with full query mapping."""
-        mapping = {
-            "Solve Assignment": "Assignment 01.pdf solve kore docx e save koro",
-            "Compare Prices": "HP laptop er dam koto compare koro",
-            "Build Website": "হাসপাতাল ম্যানেজমেন্ট ওয়েবসাইট বানিয়ে সার্ভার রান করো",
-            "Play Music": "ইউটিউবে একটি গান প্লে করো",
-            "Battery Status": "আমার ল্যাপটপের চার্জ কতটুকু আছে",
-            "কম্পিউটারের ব্যাটারি স্ট্যাটাস দেখাও": "আমার ল্যাপটপের চার্জ কতটুকু আছে",
+        """Handle the one no-parameter shortcut; reject removed legacy actions."""
+        if action_text.strip() == "Typing Mode":
+            return self.send_command("typing mode")
+        return {
+            "status": "error",
+            "message": "এই shortcut আর সমর্থিত নয়। Open App, Typing Mode, Search Web, Document Q&A অথবা Product Price ব্যবহার করুন।",
         }
-        cmd = mapping.get(action_text.strip(), action_text.strip())
-        return self.send_command(cmd)
 
     def run_toolkit_action(self, agent_name: str, param: str = "") -> dict:
         """
-        Trigger a named toolkit sub-agent action.
-        Maps natural language instructions directly to the agent processor.
+        Trigger only one of the user-approved VoiceMate capabilities.
         """
         param = (param or "").strip()
-        cmd = ""
-        if agent_name == "product_research":
-            cmd = f"খুঁজে দাও {param} দাম কত" if param else "দারাজে সেরা ল্যাপটপ খোঁজো"
-        elif agent_name == "assignment_solver":
-            cmd = f"{param} solve kore docx e save koro" if param else "Assignment solve kore docx e save koro"
-        elif agent_name == "website_builder":
-            cmd = f"{param} ওয়েবসাইট বানিয়ে সার্ভার চালু করো" if param else "Portfolio ওয়েবসাইট বানিয়ে সার্ভার চালু করো"
-        elif agent_name == "browser_agent":
-            cmd = f"ব্রাউজারে গিয়ে {param}" if param else "ব্রাউজারে গিয়ে গিটহাবে ভয়েসমেট সার্চ করো"
-        elif agent_name == "doc_reader":
-            cmd = f"ডকুমেন্ট পড়ো {param}" if param else "ডকুমেন্ট পড়ো"
-        elif agent_name == "docling_converter":
-            cmd = f"ডকলিং ডকুমেন্ট কনভার্ট {param}" if param else "ডকলিং ডকুমেন্ট কনভার্ট"
-        elif agent_name == "web_automation":
-            cmd = param if param else "ওয়েব অটোমেশন চালু করো"
-        elif agent_name == "developer_canvas":
-            cmd = param if param else "ক্যানভাস চালু করো"
-        elif agent_name == "ai_coder":
-            cmd = param if param else "রেপো ম্যাপ তৈরি করো"
-        elif agent_name == "n8n_workflow":
-            cmd = param if param else "এনএইটেন খোলো"
-        elif agent_name == "api_gateway":
-            cmd = param if param else "এপিআই ওপেন করো"
-        elif agent_name == "langgraph_brain":
-            cmd = param if param else "ব্রেন স্ট্যাটাস"
-        else:
-            cmd = f"{agent_name}: {param}" if param else agent_name
+        if agent_name == "typing_mode":
+            return self.send_command("typing mode")
+        if not param:
+            return {"status": "error", "message": "কাজটির জন্য প্রয়োজনীয় নাম বা প্রশ্ন দিন।"}
 
-        return self.send_command(cmd)
+        prefixes = {
+            "open_app": "open ",
+            "web_search": "search ",
+            "document_qa": "answer from document: ",
+            "product_price": "price of ",
+        }
+        prefix = prefixes.get(agent_name)
+        if prefix is None:
+            return {"status": "error", "message": "এই toolkit action সমর্থিত নয়।"}
+        return self.send_command(prefix + param)
 
     def get_telemetry(self) -> dict:
-        """Return current system telemetry for the HUD."""
-        battery_pct = None
-        charging = False
-
-        if self._battery_helper:
-            try:
-                info = self._battery_helper.get_battery_info()
-                battery_pct = info.get("percent")
-                charging = info.get("charging", False)
-            except Exception:
-                pass
-
-        # Detect the active language-model engine for the HUD.
-        engine = "🧠 Autonomous NLU"
-        if os.getenv("GEMINI_API_KEY"):
-            engine = "⚡ Gemini 3.8 Flash"
-        else:
-            try:
-                if hasattr(self._agent, 'decision_engine') and \
-                   hasattr(self._agent.decision_engine, 'ollama') and \
-                   self._agent.decision_engine.ollama.is_available():
-                    engine = "🦙 Ollama Local"
-            except Exception:
-                pass
-
-        return {
-            "battery":    battery_pct,
-            "charging":   charging,
-            "engine":     engine,
-            "is_running": bool(self._agent.is_running),
-        }
+        """Return only the service state used by the interface."""
+        return {"is_running": bool(self._agent.is_running)}
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -209,7 +150,6 @@ def _build_state_callback(bridge_ref: list, window_ref: list):
         is_running   = state.get("is_running", True)
         is_listening = state.get("is_listening", False)
         is_speaking  = state.get("is_speaking",  False)
-        is_typing    = state.get("is_typing_mode", False)
         message      = state.get("message", "")
 
         if not is_running:

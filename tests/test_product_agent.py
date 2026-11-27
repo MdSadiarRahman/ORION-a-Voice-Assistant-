@@ -23,7 +23,7 @@ try:
     from src.product_agent.price_comparator import PriceComparator
     from src.product_agent.product_controller import ProductController
 except ModuleNotFoundError as exc:
-    if exc.name == "src.product_agent":
+    if exc.name in {"src.product_agent", "src.product_agent.product_models"}:
         PRODUCT_AGENT_AVAILABLE = False
         ProductItem = PriceComparisonResult = ProductSearchFilter = None
         ProductScraper = PriceComparator = ProductController = None
@@ -36,7 +36,10 @@ from src.intelligence.intent_engine import Intent, IntentEngine
 from src.intelligence.fast_router import FastCommandRouter
 
 
-@unittest.skipUnless(PRODUCT_AGENT_AVAILABLE, "No configured product-price data source is available.")
+@unittest.skipUnless(
+    PRODUCT_AGENT_AVAILABLE,
+    "The legacy product model is not used by the current retailer price-search service.",
+)
 class TestProductResearchAgent(unittest.TestCase):
     """
     Test suite for VoiceMate Intelligent Product Search & Price Research Agent.
