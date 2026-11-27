@@ -41,7 +41,7 @@ class HybridDecisionEngine:
     """
     def __init__(self, ollama_host: str = "http://localhost:11434", ollama_model: str = "qwen3:4b", provider: Optional[str] = None):
         import os
-        self.provider = (provider or os.getenv("VOICEMATE_LLM_PROVIDER", "ollama")).strip().lower()
+        self.provider = (provider or os.getenv("VOICEMATE_LLM_PROVIDER", "auto")).strip().lower()
         self.gemini = GeminiClient()
         self.ollama = OllamaClient(host=ollama_host, model=ollama_model)
         self.context = ContextManager()
@@ -138,61 +138,67 @@ class HybridDecisionEngine:
             intent_res = FastCommandRouter.match(raw_text)
 
         # -------------------------------------------------------------
-        # STEP 3a: Cloud AI Mode via Google Gemini API (only when provider == "gemini")
+        # STEP 3: Hybrid LLM Routing (Auto: Local Ollama <-> Cloud Gemini)
         # -------------------------------------------------------------
-        if not intent_res and self.provider == "gemini":
-            if not self.gemini.is_available():
-                print("[LLM ERROR] Provider 'gemini' selected, but GEMINI_API_KEY or google-generativeai is unavailable.")
+        def _parse_llm_output(llm_output: Optional[Dict[str, Any]], source_name: str, conf: float) -> Optional[IntentResult]:
+            if not llm_output or not isinstance(llm_output, dict):
+                return None
+            intent_str = llm_output.get("intent", "unknown")
+            action_str = llm_output.get("action", "none")
+            parameters = llm_output.get("parameters") or {}
+            if not isinstance(parameters, dict):
+                parameters = {}
+            ai_reply = llm_output.get("reply") or parameters.get("reply") or ""
+
+            try:
+                intent_enum = Intent(intent_str)
+            except Exception:
+                intent_enum = Intent.UNKNOWN
+
+            res = IntentResult(
+                intent=intent_enum,
+                action=action_str,
+                confidence=conf,
+                parameters=parameters,
+                raw_query=raw_text,
+                source=source_name,
+            )
+            if ai_reply:
+                res.parameters["ai_reply"] = ai_reply
+            return res
+
+        if not intent_res:
+            # Determine order: "gemini" prefers Gemini; "ollama" tries Ollama first; "auto" picks available local/cloud
+            try_ollama_first = self.provider == "ollama" or (self.provider == "auto" and self.ollama.is_available())
+            if try_ollama_first:
+                if self.ollama.is_available():
+                    intent_res = _parse_llm_output(
+                        self.ollama.analyze_query(raw_text, self.context.history),
+                        "ollama_qwen",
+                        0.88,
+                    )
+                if not intent_res and self.gemini.is_available():
+                    intent_res = _parse_llm_output(
+                        self.gemini.analyze_query(raw_text, self.context.history),
+                        "gemini_cloud",
+                        0.96,
+                    )
             else:
-                gemini_output = self.gemini.analyze_query(raw_text, self.context.history)
-            if gemini_output:
-                intent_str = gemini_output.get("intent", "unknown")
-                action_str = gemini_output.get("action", "none")
-                parameters = gemini_output.get("parameters", {})
-                ai_reply = gemini_output.get("reply", "")
-
-                try:
-                    intent_enum = Intent(intent_str)
-                except Exception:
-                    intent_enum = Intent.UNKNOWN
-
-                intent_res = IntentResult(
-                    intent=intent_enum,
-                    action=action_str,
-                    confidence=0.96,
-                    parameters=parameters,
-                    raw_query=raw_text,
-                    source="gemini_cloud"
-                )
-                if ai_reply:
-                    intent_res.parameters["ai_reply"] = ai_reply
-
-        # -------------------------------------------------------------
-        # STEP 3b: Local AI Mode via Ollama Qwen3:4b (Offline Local Brain)
-        # -------------------------------------------------------------
-        if not intent_res and self.ollama.is_available():
-            ollama_output = self.ollama.analyze_query(raw_text, self.context.history)
-            if ollama_output:
-                intent_str = ollama_output.get("intent", "unknown")
-                action_str = ollama_output.get("action", "none")
-                parameters = ollama_output.get("parameters", {})
-                ai_reply = ollama_output.get("reply", "")
-
-                try:
-                    intent_enum = Intent(intent_str)
-                except Exception:
-                    intent_enum = Intent.UNKNOWN
-
-                intent_res = IntentResult(
-                    intent=intent_enum,
-                    action=action_str,
-                    confidence=0.88,
-                    parameters=parameters,
-                    raw_query=raw_text,
-                    source="ollama_qwen"
-                )
-                if ai_reply:
-                    intent_res.parameters["ai_reply"] = ai_reply
+                # Prefer Gemini Cloud ("gemini" or "auto" when Ollama has no pulled models)
+                if self.gemini.is_available():
+                    intent_res = _parse_llm_output(
+                        self.gemini.analyze_query(raw_text, self.context.history),
+                        "gemini_cloud",
+                        0.96,
+                    )
+                elif self.provider == "gemini":
+                    print("[LLM ERROR] Provider 'gemini' selected, but GEMINI_API_KEY is unavailable.")
+                if not intent_res and self.ollama.is_available():
+                    intent_res = _parse_llm_output(
+                        self.ollama.analyze_query(raw_text, self.context.history),
+                        "ollama_qwen",
+                        0.88,
+                    )
 
         # -------------------------------------------------------------
         # STEP 4: Smart Semantic Fallback (Works even when Ollama is Offline)

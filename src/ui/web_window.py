@@ -90,10 +90,10 @@ class VoiceMateBridge:
     def toggle_voice(self) -> dict:
         """Toggle voice listening mode."""
         try:
-            # AgentService's voice mode — if supported
+            is_listening = False
             if hasattr(self._agent, 'toggle_voice'):
-                self._agent.toggle_voice()
-            return {"status": "ok"}
+                is_listening = bool(self._agent.toggle_voice())
+            return {"status": "ok", "is_listening": is_listening}
         except Exception as e:
             return {"status": "error", "message": str(e)}
 
@@ -126,6 +126,72 @@ class VoiceMateBridge:
         if prefix is None:
             return {"status": "error", "message": "এই toolkit action সমর্থিত নয়।"}
         return self.send_command(prefix + param)
+
+    def get_settings(self) -> dict:
+        """Returns current assistant settings for the Settings Modal."""
+        key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY") or ""
+        masked = f"{key[:6]}...{key[-4:]}" if len(key) > 12 else ("Configured" if key else "")
+        provider = os.getenv("VOICEMATE_LLM_PROVIDER", "auto")
+        lang = getattr(getattr(self._agent, "recognizer", None), "language", "bn-BD")
+        return {
+            "provider": provider,
+            "has_api_key": bool(key),
+            "api_key_masked": masked,
+            "language": lang,
+            "is_listening": bool(getattr(self._agent, "is_listening", False)),
+        }
+
+    def save_settings(self, settings: dict) -> dict:
+        """Persists LLM provider, Gemini API key, and voice language settings."""
+        try:
+            provider = (settings.get("provider") or "auto").strip().lower()
+            api_key = (settings.get("api_key") or "").strip()
+            language = (settings.get("language") or "bn-BD").strip()
+
+            os.environ["VOICEMATE_LLM_PROVIDER"] = provider
+            if api_key:
+                os.environ["GEMINI_API_KEY"] = api_key
+
+            # Update .env file cleanly
+            env_path = ROOT / ".env"
+            lines = env_path.read_text(encoding="utf-8").splitlines() if env_path.exists() else []
+            updated_keys = {}
+            if api_key:
+                updated_keys["GEMINI_API_KEY"] = api_key
+            updated_keys["VOICEMATE_LLM_PROVIDER"] = provider
+
+            new_lines = []
+            seen = set()
+            for line in lines:
+                stripped = line.strip()
+                if not stripped or stripped.startswith("#") or "=" not in stripped:
+                    new_lines.append(line)
+                    continue
+                k = stripped.split("=", 1)[0].strip()
+                if k in updated_keys:
+                    new_lines.append(f"{k}={updated_keys[k]}")
+                    seen.add(k)
+                else:
+                    new_lines.append(line)
+            for k, v in updated_keys.items():
+                if k not in seen:
+                    new_lines.append(f"{k}={v}")
+            env_path.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
+
+            # Hot-reload running engine & recognizer
+            if hasattr(self._agent, "decision_engine"):
+                de = self._agent.decision_engine
+                de.provider = provider
+                if hasattr(de, "gemini"):
+                    de.gemini.refresh_key(api_key if api_key else None)
+            if hasattr(self._agent, "recognizer"):
+                self._agent.recognizer.language = language
+
+            telem = self.get_telemetry()
+            self._js(f"window.updateTelemetry && window.updateTelemetry({json.dumps(telem)})")
+            return {"status": "ok", "telemetry": telem}
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
 
     def get_telemetry(self) -> dict:
         """Return only the service state used by the interface."""

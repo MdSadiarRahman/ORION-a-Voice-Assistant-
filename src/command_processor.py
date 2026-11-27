@@ -123,19 +123,26 @@ class CommandProcessor:
 
 
         # ২b. অ্যাসাইনমেন্ট সলভার এজেন্ট (Direct Assignment Routing)
-        assignment_kws = [
-            "অ্যাসাইনমেন্ট", "এসাইনমেন্ট", "assignment", "হোমওয়ার্ক", "homework", "প্রশ্নপত্র",
-            "সলভ", "solve", "সমাধান", "উত্তর", "answer", "প্রশ্নের উত্তর",
-            "question solve", "question answer", "পিডিএফ", "pdf",
-            "পরীক্ষার প্রশ্ন", "পড়াশোনা", "পড়া", "study help"
+        assignment_core_kws = [
+            "অ্যাসাইনমেন্ট", "এসাইনমেন্ট", "assignment", "হোমওয়ার্ক", "homework",
+            "প্রশ্নপত্র", "question solve", "question answer", "পরীক্ষার প্রশ্ন",
+            "পড়াশোনা", "study help", "সলভ", "solve", "সমাধান"
         ]
+        assignment_doc_kws = ["পিডিএফ", "pdf", "উত্তর", "answer", "পড়া"]
         assignment_action_kws = [
             "সলভ", "solve", "সমাধান", "উত্তর", "answer", "করো", "করে", "দাও",
             "বলো", "help", "লিখো", "write", "বানাও", "create", "তৈরি"
         ]
-        has_assignment_kw = any(kw in cmd for kw in assignment_kws)
+        is_local_search_or_read = (
+            any(w in cmd for w in ["খুঁজে", "খুঁজো", "খুঁজুন", "find", "search", "সামারি", "summarize", "পড়ো", "পড়ো", "পড়ে", "পড়ে", "read"])
+            and not any(w in cmd for w in ["অ্যাসাইনমেন্ট", "এসাইনমেন্ট", "assignment", "হোমওয়ার্ক", "homework", "সলভ", "solve", "সমাধান"])
+        )
+        has_assignment_kw = any(kw in cmd for kw in assignment_core_kws) or (
+            any(kw in cmd for kw in assignment_doc_kws)
+            and any(w in cmd for w in ["সলভ", "solve", "সমাধান", "উত্তর", "answer", "অ্যাসাইনমেন্ট", "assignment", "হোমওয়ার্ক", "homework"])
+        )
         has_assignment_action = any(kw in cmd for kw in assignment_action_kws)
-        if has_assignment_kw and has_assignment_action:
+        if not is_local_search_or_read and has_assignment_kw and has_assignment_action:
             task_clean = cmd
             for kw in ["অ্যাসাইনমেন্ট", "এসাইনমেন্ট", "assignment", "হোমওয়ার্ক", "homework"]:
                 task_clean = task_clean.replace(kw, "")
@@ -276,6 +283,16 @@ class CommandProcessor:
             if not task_clean:
                 task_clean = cmd
             return f"ACTION_BRAIN_TASK|{task_clean}"
+
+        # ৯খ. লোকাল পিসি ফাইল সার্চ (Google সার্চে যাওয়ার আগে চেক)
+        local_file_nouns = ["ফাইল", "file", "পিডিএফ", "pdf", "docx", "ডকুমেন্ট", "document", "রিজিউম", "resume", "cv", "নোটস", "notes"]
+        local_file_verbs = ["খুঁজে দাও", "খুঁজো", "খুঁজুন", "দেখাও", "find", "search"]
+        if (
+            any(fn in cmd for fn in local_file_nouns)
+            and any(fv in cmd for fv in local_file_verbs)
+            and not any(w in cmd for w in ["google", "গুগল", "youtube", "ইউটিউব"])
+        ):
+            return f"ACTION_FIND_FILE|{command.strip()}"
 
         # ১০. সার্চ কমান্ড (গুগল ও ইউটিউব কুইক সার্চ)
         search_keywords = ["search", "সার্চ", "খুঁজো", "খুঁজুন", "দেখাও", "দেখবো", "খুঁজে দাও"]

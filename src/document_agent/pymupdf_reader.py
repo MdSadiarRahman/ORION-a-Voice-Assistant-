@@ -175,16 +175,54 @@ class PyMuPDFReader:
     @classmethod
     def get_document_summary_for_voice(cls, file_path: str) -> str:
         """
-        Reads document and generates a concise Bengali summary tailored for
-        VoiceMate's Text-to-Speech (TTS) engine.
+        Reads document (including OCR fallback on scanned PDFs) and generates a
+        concise Bengali summary tailored for VoiceMate's Text-to-Speech (TTS) engine.
         """
         data = cls.extract_text_and_markdown(file_path)
         file_name = data["file_name"]
         pages = data["page_count"]
         text = data["plain_text"].strip()
 
-        # Extract leading key paragraphs for voice reading
-        lines = [line.strip() for line in text.split("\n") if len(line.strip()) > 30]
+        # Scanned PDF OCR fallback if extracted plain text has almost no content
+        import re as _re
+        meaningful = _re.sub(r"---\s*Page\s*\d+\s*---|\s+", "", text)
+        if len(meaningful) < 40 and pages > 0:
+            ocr_chunks = []
+            for p_idx in range(min(pages, 2)):
+                ocr_txt = cls.ocr_scanned_page(file_path, page_number=p_idx)
+                if not ocr_txt or not ocr_txt.strip():
+                    try:
+                        from src.helpers.vision_helper import VisionHelper
+                        img_p = cls.render_page_preview(file_path, page_number=p_idx)
+                        ocr_txt = VisionHelper.recognize_text(img_p)
+                        if "খুঁজে পাওয়া যায়নি" in ocr_txt:
+                            ocr_txt = ""
+                    except Exception:
+                        ocr_txt = ""
+                if ocr_txt and ocr_txt.strip():
+                    ocr_chunks.append(ocr_txt.strip())
+            if ocr_chunks:
+                text = "\n\n".join(ocr_chunks)
+
+        # Try AI summarization (Gemini REST / Ollama) when available
+        meaningful_after = _re.sub(r"---\s*Page\s*\d+\s*---|\s+", "", text)
+        if len(meaningful_after) >= 60:
+            try:
+                from src.intelligence.gemini_client import GeminiClient
+                gc = GeminiClient(timeout_seconds=10.0)
+                if gc.is_available():
+                    ai_sum = gc.generate_text(
+                        prompt=f"Document '{file_name}' ({pages} pages):\n{text[:6000]}\n\nSummarize the key points in 2-3 clear Bengali sentences for voice playback:",
+                        system_prompt="You summarize documents concisely and accurately in Bengali for spoken output.",
+                        temperature=0.2,
+                    )
+                    if ai_sum:
+                        return f"ডকুমেন্ট '{file_name}' ({pages} পৃষ্ঠা) পড়া হয়েছে। সারসংক্ষেপ: {ai_sum}"
+            except Exception:
+                pass
+
+        # Deterministic preview fallback
+        lines = [line.strip() for line in text.split("\n") if len(line.strip()) > 30 and not line.strip().startswith("--- Page")]
         summary_preview = " ".join(lines[:6])
 
         if len(summary_preview) > DOCUMENT_MAX_VOICE_CHARS:
