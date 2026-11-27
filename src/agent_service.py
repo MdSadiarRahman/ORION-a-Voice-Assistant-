@@ -48,6 +48,7 @@ class AgentService:
         self.is_listening = False
         self.is_speaking = False
         self.is_typing_mode = False
+        self._voice_muted = False
         self.is_waiting_for_search = False
         self.search_target = ""
         self._recent_spoken_phrases: list[tuple[float, str]] = []
@@ -128,6 +129,8 @@ class AgentService:
         if self.is_running:
             return
         self.is_running = True
+        self._voice_muted = False
+        self.is_listening = True
         self.speak("ভয়েস মেট সক্রিয় আছে। আমি আপনার কথা শুনছি...", start_listening_after=True)
         
         # Start battery monitoring
@@ -139,12 +142,33 @@ class AgentService:
 
     def stop(self):
         """Stops the voice agent service."""
+        self._voice_muted = False
         self.is_running = False
         self.is_listening = False
         self.recognizer.stop_listening()
         BatteryHelper.stop_monitoring()
         self.tts.shutdown()
         self._notify_state("অ্যাসিস্ট্যান্ট বন্ধ করা হয়েছে")
+
+    def toggle_voice(self) -> bool:
+        """Toggles active microphone speech listening on or off."""
+        if not self.is_running:
+            self.start()
+            return bool(self.is_running and not self._voice_muted and self.recognizer.is_listening)
+        currently_active = (not self._voice_muted) and (
+            self.is_listening or self.is_speaking or self.recognizer.is_listening
+        )
+        if currently_active:
+            self._voice_muted = True
+            self.recognizer.stop_listening()
+            self.is_listening = False
+            self._notify_state("মাইক্রোফোন মিউট করা হয়েছে (টাইপ করে কমান্ড দিন)")
+            return False
+        self._voice_muted = False
+        self.recognizer.start_listening()
+        self.is_listening = bool(self.recognizer.is_listening)
+        self._notify_state("আমি শুনছি...")
+        return self.is_listening
 
     def _on_tts_start(self):
         self.is_speaking = True
@@ -154,12 +178,12 @@ class AgentService:
     def _on_tts_done(self):
         self.is_speaking = False
         self._last_tts_end_time = time.time()
-        if self.is_running:
+        if self.is_running and not self._voice_muted:
             self.is_listening = True
             self._notify_state("আমি শুনছি...")
 
     def _on_speech_ready(self):
-        if self.is_running and not self.is_speaking:
+        if self.is_running and not self.is_speaking and not self._voice_muted:
             self.is_listening = True
             status_text = "আমি লিখছি... বলুন" if self.is_typing_mode else "আমি শুনছি..."
             self._notify_state(status_text)
@@ -463,6 +487,14 @@ class AgentService:
                 on_progress=on_brain_progress,
                 on_finish=on_brain_finish
             )
+            return
+
+        if response.startswith("ACTION_FIND_FILE|"):
+            find_query = response.split("|", 1)[1].strip()
+            from src.intelligence.tool_registry import ToolRegistry
+            tr = ToolRegistry()
+            tool_res = tr.execute("SEARCH_LOCAL_FILE", query=find_query)
+            self.speak(tool_res.get("reply", "ফাইল অনুসন্ধান সম্পন্ন হয়েছে।"), start_listening_after=True)
             return
 
         if response.startswith("PROMPT_SEARCH|"):

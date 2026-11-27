@@ -218,9 +218,10 @@
     <!-- One-Click Quick Action Chips -->
     <div class="chip-row">
       <button class="chip font-bengali" onclick="quickAction('Solve Assignment')">📝 Solve Assignment</button>
-      <button class="chip font-bengali" onclick="quickAction('Compare Prices')">🏷️ Compare Prices</button>
       <button class="chip font-bengali" onclick="quickAction('Build Website')">🌐 Build Website</button>
+      <button class="chip font-bengali" onclick="quickAction('Weather')">🌤️ Weather</button>
       <button class="chip font-bengali" onclick="quickAction('Play Music')">🎵 Play Music</button>
+      <button class="chip font-bengali" onclick="quickAction('Find Files')">📁 Find Files</button>
       <button class="chip font-bengali" onclick="quickAction('Battery Status')">🔋 Battery Status</button>
     </div>
 
@@ -323,19 +324,20 @@
         </div>
       </div>
 
-      <!-- Quadrant 4: Enterprise & API (Product Comparator, n8n, FastAPI Gateway) -->
+      <!-- Quadrant 4: Enterprise, Research & API -->
       <div class="mission-card" data-accent="amber">
         <div class="mc-glow" aria-hidden="true"></div>
         <div class="mc-header">
           <div class="mc-icon-wrap amber-icon">⚡</div>
           <div class="mc-info">
-            <div class="mc-title font-heading">Enterprise &amp; API</div>
-            <div class="mc-desc font-bengali">Product Comparator, n8n ওয়ার্কফ্লো ও FastAPI গেটওয়ে</div>
+            <div class="mc-title font-heading">Enterprise, Research &amp; API</div>
+            <div class="mc-desc font-bengali">Web Research, PC ফাইল সার্চ, n8n ও FastAPI গেটওয়ে</div>
           </div>
           <span class="mc-badge ready font-mono" id="badge-enterprise">READY</span>
         </div>
         <div class="mc-actions">
-          <button class="mc-btn font-bengali" onclick="runToolkit('product_research','কোন প্রোডাক্টের দাম যাচাই করতে চান লিখুন:')">🔍 Product Comparator (দারাজ/স্টারটেক)</button>
+          <button class="mc-btn font-bengali" onclick="runToolkit('web_research','কী বিষয়ে ওয়েব রিসার্চ বা প্রশ্ন করতে চান লিখুন:')">🔍 Web Research &amp; AI Answer</button>
+          <button class="mc-btn font-bengali" onclick="runToolkit('file_search','কোন ফাইল বা PDF খুঁজতে চান লিখুন:')">📁 Local PC File Search</button>
           <button class="mc-btn font-bengali" onclick="runToolkit('n8n_workflow','n8n ওয়ার্কফ্লো টাস্ক লিখুন:')">🔗 n8n Workflow Automation</button>
           <button class="mc-btn font-bengali" onclick="runToolkit('api_gateway','FastAPI কমান্ড লিখুন:')">🔌 FastAPI Gateway &amp; Swagger</button>
           <button class="mc-btn font-bengali" onclick="runToolkit('langgraph_brain','LangGraph ব্রেইন কমান্ড লিখুন:')">🧠 LangGraph Brain Orchestrator</button>
@@ -372,6 +374,44 @@
   </section>
 
 </main>
+
+<!-- ═══════════════════════════════════════════════════════════
+     SETTINGS MODAL (Glassmorphic Neural Config)
+═══════════════════════════════════════════════════════════ -->
+<div id="settingsModal" class="modal-backdrop hidden" onclick="if(event.target===this)closeSettings()">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h3 class="modal-title font-heading">⚙ Neural Core Settings</h3>
+      <button class="modal-close" onclick="closeSettings()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label font-mono">LLM ENGINE MODE</label>
+        <select id="cfgProvider" class="form-control font-mono">
+          <option value="auto">Auto Hybrid (Local Ollama + Gemini Cloud)</option>
+          <option value="gemini">Gemini Cloud API</option>
+          <option value="ollama">Local Ollama Only</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label font-mono">GEMINI API KEY</label>
+        <input id="cfgApiKey" type="password" class="form-control font-mono" placeholder="Leave blank to keep current key..." />
+        <small id="cfgKeyHint" class="form-hint font-mono"></small>
+      </div>
+      <div class="form-group">
+        <label class="form-label font-mono">SPEECH RECOGNITION LANGUAGE</label>
+        <select id="cfgLang" class="form-control font-bengali">
+          <option value="bn-BD">বাংলা (Bangladesh - bn-BD)</option>
+          <option value="en-US">English (United States - en-US)</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="tele-ctrl-btn font-mono" onclick="closeSettings()">Cancel</button>
+      <button class="modal-save-btn font-mono" onclick="saveSettings()">Save &amp; Apply</button>
+    </div>
+  </div>
+</div>
 
 <script src="app.js"></script>
 </body>

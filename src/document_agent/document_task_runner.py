@@ -41,6 +41,18 @@ class DocumentTaskRunner:
                 if raw_path.lower() in f.name.lower() and f.suffix in [".pdf", ".docx", ".txt", ".md"]:
                     return f
 
+        # Search via FileSearchEngine across Desktop, Downloads, Documents, OneDrive, DOCS_DIR
+        try:
+            from src.document_intelligence.file_search import FileSearchEngine
+            eng = FileSearchEngine()
+            if DOCS_DIR.exists() and DOCS_DIR not in eng.authorized_roots:
+                eng.authorized_roots.append(DOCS_DIR)
+            matches = eng.search(raw_path, search_content=False, max_results=3)
+            if matches:
+                return matches[0].path
+        except Exception:
+            pass
+
         # Fallback to the latest modified file in DOCS_DIR if any exists
         if DOCS_DIR.exists():
             files = sorted(DOCS_DIR.glob("*.*"), key=lambda x: x.stat().st_mtime, reverse=True)

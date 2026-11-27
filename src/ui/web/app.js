@@ -197,18 +197,20 @@ async function toggleService() {
   }
 }
 
-function setServiceState(running) {
+function setServiceState(running, quiet = false) {
+  const changed = STATE.serviceRunning !== running;
   STATE.serviceRunning = running;
   const toggle = document.getElementById('svcToggle');
   if (toggle) {
     toggle.classList.toggle('active', running);
   }
+  if (!changed) return;
   if (running) {
     setStatus('online', 'ONLINE');
-    appendLog('INFO', 'ভয়েস সার্ভিস সক্রিয় করা হয়েছে');
+    if (!quiet) appendLog('INFO', 'ভয়েস সার্ভিস সক্রিয় করা হয়েছে');
   } else {
     setStatus('offline', 'OFFLINE');
-    appendLog('WARN', 'ভয়েস সার্ভিস সাময়িক স্থগিত');
+    if (!quiet) appendLog('WARN', 'ভয়েস সার্ভিস সাময়িক স্থগিত');
   }
 }
 
@@ -222,10 +224,54 @@ function toggleMute() {
   appendLog('INFO', `অডিও ফিডব্যাক: ${STATE.muted ? 'নিঃশব্দ (Muted)' : 'সক্রিয় (Unmuted)'}`);
 }
 
-function openSettings() {
+async function openSettings() {
   playUiTick();
-  appendLog('AGENT', 'Settings ইন্টারফেস অনুরোধ করা হয়েছে');
-  appendChat('SYSTEM', 'সেটিংস অপশন: মাইক্রোফোন, স্পিচ ভয়েস ও API কনফিগারেশন।', 'system');
+  const modal = document.getElementById('settingsModal');
+  if (!modal) return;
+  try {
+    const cfg = await safeApi('get_settings');
+    if (cfg) {
+      const provEl = document.getElementById('cfgProvider');
+      const langEl = document.getElementById('cfgLang');
+      const hintEl = document.getElementById('cfgKeyHint');
+      const keyEl = document.getElementById('cfgApiKey');
+      if (provEl) provEl.value = cfg.provider || 'auto';
+      if (langEl) langEl.value = cfg.language || 'bn-BD';
+      if (keyEl) keyEl.value = '';
+      if (hintEl) {
+        hintEl.textContent = cfg.has_api_key
+          ? `Current Key: ${cfg.api_key_masked} (active)`
+          : 'No Gemini API Key configured yet';
+      }
+    }
+  } catch (e) {
+    appendLog('WARN', 'Settings load fallback: ' + e);
+  }
+  modal.classList.remove('hidden');
+}
+
+function closeSettings() {
+  const modal = document.getElementById('settingsModal');
+  if (modal) modal.classList.add('hidden');
+}
+
+async function saveSettings() {
+  playUiTick(950);
+  const provider = document.getElementById('cfgProvider')?.value || 'auto';
+  const api_key = document.getElementById('cfgApiKey')?.value || '';
+  const language = document.getElementById('cfgLang')?.value || 'bn-BD';
+  try {
+    const res = await safeApi('save_settings', { provider, api_key, language });
+    if (res && res.status === 'ok') {
+      appendLog('SUCCESS', `সেটিংস সংরক্ষণ হয়েছে (Engine: ${provider}, Lang: ${language})`);
+      appendChat('SYSTEM', `সেটিংস আপডেট হয়েছে: Provider=${provider}, Language=${language}`, 'system');
+      closeSettings();
+    } else {
+      appendLog('ERROR', 'Settings save error: ' + (res?.message || 'unknown'));
+    }
+  } catch (e) {
+    appendLog('ERROR', 'Settings save failed: ' + e);
+  }
 }
 
 // ── Status Dot & Label Helper ───────────────────────────────────────
@@ -242,8 +288,8 @@ function setStatus(cls, label) {
 async function toggleVoice() {
   playUiTick(750);
   try {
-    await safeApi('toggle_voice');
-    STATE.voiceActive = !STATE.voiceActive;
+    const res = await safeApi('toggle_voice');
+    STATE.voiceActive = (res && res.is_listening !== undefined) ? Boolean(res.is_listening) : !STATE.voiceActive;
     const btn = document.getElementById('micBtn');
     if (btn) {
       btn.classList.toggle('active', STATE.voiceActive);
@@ -293,6 +339,8 @@ const AGENT_BADGE_MAP = {
   website_builder: 'badge-se',
   ai_coder: 'badge-se',
   developer_canvas: 'badge-se',
+  web_research: 'badge-enterprise',
+  file_search: 'badge-enterprise',
   product_research: 'badge-enterprise',
   n8n_workflow: 'badge-enterprise',
   api_gateway: 'badge-enterprise',
@@ -365,6 +413,10 @@ window.onAgentStateChange = function(state) {
 
   updateOrbState(st);
 
+  STATE.voiceActive = (st === 'listening');
+  const micBtn = document.getElementById('micBtn');
+  if (micBtn) micBtn.classList.toggle('active', STATE.voiceActive);
+
   if (state.message) {
     appendChat('VoiceMate AI', state.message, 'agent');
   }
@@ -388,7 +440,12 @@ window.updateTelemetry = function(data) {
   }
 
   if (data.is_running !== undefined) {
-    setServiceState(data.is_running);
+    setServiceState(data.is_running, true);
+  }
+  if (data.is_listening !== undefined) {
+    STATE.voiceActive = Boolean(data.is_listening);
+    const micBtn = document.getElementById('micBtn');
+    if (micBtn) micBtn.classList.toggle('active', STATE.voiceActive);
   }
 };
 
