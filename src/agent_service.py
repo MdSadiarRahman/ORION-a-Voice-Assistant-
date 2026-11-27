@@ -337,6 +337,9 @@ class AgentService:
 
         # ডিটারমিনিস্টিক ওয়েব অটোমেশন (Playwright) টাস্ক
         if response.startswith("ACTION_PLAYWRIGHT_TASK|"):
+            if PlaywrightTaskRunner is None:
+                self.speak("দুঃখিত, ওয়েব অটোমেশন এজেন্ট বর্তমানে উপলব্ধ নেই।", start_listening_after=True)
+                return
             pw_task = response.split("|", 1)[1].strip()
             self.speak("আমি ওয়েব অটোমেশনের কাজটি শুরু করছি, অপেক্ষা করুন...", start_listening_after=False)
 
