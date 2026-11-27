@@ -220,7 +220,7 @@ class WebResearchHelper:
 
     @classmethod
     def conduct_academic_research(cls, topic: str) -> Dict[str, Any]:
-        """Provides headless academic/web sources & facts for AssignmentController & TaskPlanner."""
+        """Provides headless academic/web sources & facts for AssignmentController & DecisionEngine."""
         snippets = cls.fetch_web_snippets(topic, max_results=3)
         sources = [
             {"title": s["title"], "url": s["url"] if s["url"].startswith("http") else "https://duckduckgo.com"}

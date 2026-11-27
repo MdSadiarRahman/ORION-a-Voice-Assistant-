@@ -87,28 +87,46 @@ class HybridDecisionEngine:
         intent_res: Optional[IntentResult] = None
 
         # -------------------------------------------------------------
-        # STEP 1b: Autonomous Multi-Step Task Planner Check
-        # Detects complex goals (Assignment solving, Website creation, Deep Research)
+        # STEP 1b: Autonomous Workflow Check (Assignment Solving & Deep Research)
         # -------------------------------------------------------------
         lower_q = raw_text.lower()
-        is_autonomous_goal = (
-            (any(w in lower_q for w in ["assignment", "অ্যাসাইনমেন্ট"]) and any(w in lower_q for w in ["সলভ", "solve", "সমাধান", "docx", "pdf", "করো"])) or
-            (any(w in lower_q for w in ["website", "ওয়েবসাইট"]) and any(w in lower_q for w in ["বানিয়ে", "তৈরি", "build", "create", "make", "দাও", "করো"])) or
-            (any(w in lower_q for w in ["রিসার্চ রিপোর্ট", "গবেষণামূলক রিপোর্ট", "deep research", "research report"]))
+        is_assignment_goal = (
+            any(w in lower_q for w in ["assignment", "অ্যাসাইনমেন্ট"])
+            and any(w in lower_q for w in ["সলভ", "solve", "সমাধান", "docx", "pdf", "করো"])
         )
-        if is_autonomous_goal and not followup_data:
-            from src.agent_brain.task_planner import TaskPlanner
-            plan = TaskPlanner.create_plan(raw_text)
-            executed_plan = TaskPlanner.execute_plan(plan)
+        is_research_goal = any(
+            w in lower_q for w in ["রিসার্চ রিপোর্ট", "গবেষণামূলক রিপোর্ট", "deep research", "research report"]
+        )
+        if is_assignment_goal and not followup_data:
+            from src.assignment_agent.assignment_controller import AssignmentController
+            res = AssignmentController.execute_assignment_workflow(raw_text)
             intent_res = IntentResult(
                 intent=Intent.SUBSYSTEM_TASK,
-                action="autonomous_plan",
+                action="assignment_workflow",
                 confidence=0.99,
-                parameters={"plan": executed_plan.to_dict()},
+                parameters={"assignment_result": res},
                 raw_query=raw_text,
-                source="task_planner"
+                source="assignment_agent",
             )
-            response_msg = executed_plan.final_summary
+            response_msg = res.get("voice_summary") or "অ্যাসাইনমেন্ট সমাধান সম্পন্ন হয়েছে।"
+            self.context.record_turn("user", raw_text)
+            self.context.record_turn("assistant", response_msg)
+            return intent_res, response_msg
+
+        if is_research_goal and not followup_data:
+            from src.helpers.web_research_helper import WebResearchHelper
+            res = WebResearchHelper.conduct_academic_research(raw_text)
+            ans = WebResearchHelper.search_and_answer(raw_text)
+            summary = res.get("voice_summary", "")
+            response_msg = f"{summary}\n{ans}".strip() if ans else summary
+            intent_res = IntentResult(
+                intent=Intent.SUBSYSTEM_TASK,
+                action="deep_research",
+                confidence=0.98,
+                parameters={"research_result": res},
+                raw_query=raw_text,
+                source="web_research",
+            )
             self.context.record_turn("user", raw_text)
             self.context.record_turn("assistant", response_msg)
             return intent_res, response_msg
@@ -471,23 +489,13 @@ class HybridDecisionEngine:
         if intent == Intent.CANCEL_ACTION:
             return "কমান্ডটি বাতিল করা হয়েছে।"
 
-        # 14. SUBSYSTEM TASKS (Delegated to external engines)
+        # 14. SUBSYSTEM TASKS (Delegated to Document Intelligence engines)
         if intent == Intent.SUBSYSTEM_TASK:
             query = params.get("query", "")
             if action == "docling":
                 return f"ACTION_DOCLING_TASK|{query}"
             elif action == "document":
                 return f"ACTION_DOCUMENT_TASK|{query}"
-            elif action == "coder":
-                return f"ACTION_CODER_TASK|{query}"
-            elif action == "canvas":
-                return f"ACTION_CANVAS_TASK|{query}"
-            elif action == "n8n":
-                return f"ACTION_N8N_TASK|{query}"
-            elif action == "api_gateway":
-                return f"ACTION_API_GATEWAY_TASK|{query}"
-            elif action == "brain":
-                return f"ACTION_BRAIN_TASK|{query}"
 
         # 15. GENERAL CONVERSATION OR AI REPLY
         if "ai_reply" in params and params["ai_reply"]:
@@ -520,7 +528,7 @@ class HybridDecisionEngine:
                 intent=Intent.UNKNOWN,
                 action="capability_reply",
                 confidence=0.95,
-                parameters={"ai_reply": "আমি ইউটিউবে গান চালানো, পণ্যের বাজারদর তুলনা, অ্যাসাইনমেন্ট সমাধান, সম্পূর্ণ ওয়েবসাইট তৈরি, অ্যাপ চালু ও ইন্টারনেটে গবেষণা করতে পারি। আপনি আমাকে যেকোনো স্বাভাবিক ভাষায় নির্দেশ দিতে পারেন।"},
+                parameters={"ai_reply": "আমি ইউটিউবে গান চালানো, অ্যাসাইনমেন্ট সমাধান, ডকুমেন্ট ও PDF পড়া, পিসির ফাইল খুঁজে দেওয়া, আবহাওয়া জানানো, অ্যাপ চালু ও ইন্টারনেট রিসার্চ করতে পারি। আপনি আমাকে যেকোনো স্বাভাবিক ভাষায় নির্দেশ দিতে পারেন।"},
                 raw_query=text,
                 source="semantic_fallback"
             )

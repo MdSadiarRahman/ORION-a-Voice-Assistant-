@@ -19,21 +19,7 @@ try:
     from src.playwright_agent.playwright_task_runner import PlaywrightTaskRunner
 except ImportError:
     PlaywrightTaskRunner = None
-from src.n8n_agent.n8n_task_runner import N8nTaskRunner
-from src.api_gateway.api_task_runner import APITaskRunner
-from src.agent_brain.brain_task_runner import BrainTaskRunner
 from src.assignment_agent.assignment_controller import AssignmentController
-
-# Optional agents (may not be installed)
-try:
-    from src.canvas_agent.canvas_task_runner import CanvasTaskRunner
-except ImportError:
-    CanvasTaskRunner = None
-
-try:
-    from src.coder_agent.coder_task_runner import CoderTaskRunner
-except ImportError:
-    CoderTaskRunner = None
 
 class AgentService:
     _instance: Optional['AgentService'] = None
@@ -393,112 +379,6 @@ class AgentService:
                 task_query=pw_task,
                 on_progress=on_pw_progress,
                 on_finish=on_pw_finish
-            )
-            return
-
-        # ওপেনহ্যান্ডস ডেভেলপার ক্যানভাস টাস্ক
-        if response.startswith("ACTION_CANVAS_TASK|"):
-            if CanvasTaskRunner is None:
-                self.speak("দুঃখিত, ক্যানভাস এজেন্ট বর্তমানে উপলব্ধ নেই।", start_listening_after=True)
-                return
-            canvas_task = response.split("|", 1)[1].strip()
-            self.speak("আমি ডেভেলপার ক্যানভাস টাস্ক শুরু করছি, অনুগ্রহ করে অপেক্ষা করুন...", start_listening_after=False)
-
-            def on_canvas_progress(msg: str):
-                self._notify_state(msg)
-
-            def on_canvas_finish(result_msg: str):
-                self._notify_state(result_msg)
-                summary = result_msg.split("\n")[0]
-                self.speak(summary, start_listening_after=True)
-
-            CanvasTaskRunner.run_task(
-                task_query=canvas_task,
-                on_progress=on_canvas_progress,
-                on_finish=on_canvas_finish
-            )
-            return
-
-        # এইডার এআই কোডার ও এডিটিং টাস্ক
-        if response.startswith("ACTION_CODER_TASK|"):
-            if CoderTaskRunner is None:
-                self.speak("দুঃখিত, কোডার এজেন্ট বর্তমানে উপলব্ধ নেই।", start_listening_after=True)
-                return
-            coder_task = response.split("|", 1)[1].strip()
-            self.speak("আমি কোডার টাস্ক শুরু করছি, অপেক্ষা করুন...", start_listening_after=False)
-
-            def on_coder_progress(msg: str):
-                self._notify_state(msg)
-
-            def on_coder_finish(result_msg: str):
-                self._notify_state(result_msg)
-                summary = result_msg.split("\n")[0]
-                self.speak(summary, start_listening_after=True)
-
-            CoderTaskRunner.run_task(
-                task_query=coder_task,
-                on_progress=on_coder_progress,
-                on_finish=on_coder_finish
-            )
-            return
-
-        # এনএইটেন ইউনিভার্সাল ওয়ার্কফ্লো অটোমেশন টাস্ক
-        if response.startswith("ACTION_N8N_TASK|"):
-            n8n_task = response.split("|", 1)[1].strip()
-            self.speak("আমি এনএইটেন অটোমেশন শুরু করছি, অপেক্ষা করুন...", start_listening_after=False)
-
-            def on_n8n_progress(msg: str):
-                self._notify_state(msg)
-
-            def on_n8n_finish(result_msg: str):
-                self._notify_state(result_msg)
-                summary = result_msg.split("\n")[0]
-                self.speak(summary, start_listening_after=True)
-
-            N8nTaskRunner.run_task(
-                task_query=n8n_task,
-                on_progress=on_n8n_progress,
-                on_finish=on_n8n_finish
-            )
-            return
-
-        # ফাস্টএপিআই গেটওয়ে ও ব্যাকএন্ড সার্ভার টাস্ক
-        if response.startswith("ACTION_API_GATEWAY_TASK|"):
-            api_task = response.split("|", 1)[1].strip()
-            self.speak("আমি এপিআই গেটওয়ে প্রসেস করছি, অপেক্ষা করুন...", start_listening_after=False)
-
-            def on_api_progress(msg: str):
-                self._notify_state(msg)
-
-            def on_api_finish(result_msg: str):
-                self._notify_state(result_msg)
-                summary = result_msg.split("\n")[0]
-                self.speak(summary, start_listening_after=True)
-
-            APITaskRunner.run_task(
-                task_query=api_task,
-                on_progress=on_api_progress,
-                on_finish=on_api_finish
-            )
-            return
-
-        # ল্যাংগ্রাফ মাল্টি-এজেন্ট ব্রেন টাস্ক
-        if response.startswith("ACTION_BRAIN_TASK|"):
-            brain_task = response.split("|", 1)[1].strip()
-            self.speak("আমি ল্যাংগ্রাফ ব্রেন দিয়ে প্রসেস করছি, অপেক্ষা করুন...", start_listening_after=False)
-
-            def on_brain_progress(msg: str):
-                self._notify_state(msg)
-
-            def on_brain_finish(result_msg: str):
-                self._notify_state(result_msg)
-                summary = result_msg.split("\n")[0]
-                self.speak(summary, start_listening_after=True)
-
-            BrainTaskRunner.run_task(
-                task_query=brain_task,
-                on_progress=on_brain_progress,
-                on_finish=on_brain_finish
             )
             return
 

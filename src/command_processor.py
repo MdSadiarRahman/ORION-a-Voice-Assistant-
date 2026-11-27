@@ -151,8 +151,8 @@ class CommandProcessor:
                 task_clean = cmd
             return f"ACTION_ASSIGNMENT_TASK|{task_clean}"
 
-        # ২c. অটোনোমাস মাল্টি-স্টেপ টাস্ক প্ল্যানার (Assignment, Website Development, Deep Research)
-        if any(w in cmd for w in ["assignment", "অ্যাসাইনমেন্ট", "website", "ওয়েবসাইট", "রিসার্চ রিপোর্ট", "research report"]) and any(w in cmd for w in ["বানিয়ে", "তৈরি", "build", "create", "সলভ", "solve", "সমাধান", "docx", "pdf", "রিসার্চ", "report"]):
+        # ২c. অটোনোমাস অ্যাসাইনমেন্ট ও ডিপ রিসার্চ ওয়ার্কফ্লো
+        if any(w in cmd for w in ["assignment", "অ্যাসাইনমেন্ট", "রিসার্চ রিপোর্ট", "research report"]) and any(w in cmd for w in ["সলভ", "solve", "সমাধান", "docx", "pdf", "রিসার্চ", "report"]):
             if cls._decision_engine is None:
                 from src.intelligence.decision_engine import HybridDecisionEngine
                 cls._decision_engine = HybridDecisionEngine()
@@ -210,79 +210,6 @@ class CommandProcessor:
             if not task_clean:
                 task_clean = cmd
             return f"ACTION_PLAYWRIGHT_TASK|{task_clean}"
-
-        # ৫. ওপেনহ্যান্ডস এজেন্ট ক্যানভাস ও ডেভেলপার অপারেশন (Powered by OpenHands)
-        canvas_kws = [
-            "ক্যানভাস খোলো", "ক্যানভাস চালু", "ওপেনহ্যান্ডস", "agent canvas", "open canvas",
-            "কোড অডিট", "কোড রিভিউ", "code review", "code audit", "সিনট্যাক্স চেক",
-            "গিট স্ট্যাটাস", "git status", "ফাইল ট্রি", "file tree", "প্রোজেক্ট স্ট্রাকচার",
-            "টার্মিনালে চালাও", "টার্মিনাল কমান্ড"
-        ]
-        if any(kw in cmd for kw in canvas_kws):
-            task_clean = cmd
-            for kw in ["ওপেনহ্যান্ডস", "ক্যানভাস"]:
-                task_clean = task_clean.replace(kw, "")
-            task_clean = task_clean.strip()
-            if not task_clean:
-                task_clean = cmd
-            return f"ACTION_CANVAS_TASK|{task_clean}"
-
-        # ৬. এআই পেয়ার প্রোগ্রামার ও কোড এডিটিং (Powered by Aider)
-        coder_kws = [
-            "রেপো ম্যাপ", "repo map", "কোড ম্যাপ", "কোড এডিট করো", "কোড এডিট",
-            "সার্চ রিপ্লেস", "search replace", "কোড রোলব্যাক", "কোড আনডু",
-            "code rollback", "aider", "এইডার"
-        ]
-        if any(kw in cmd for kw in coder_kws) or "<<<<<<< search" in cmd:
-            task_clean = cmd
-            for kw in ["এইডার", "aider"]:
-                task_clean = task_clean.replace(kw, "")
-            task_clean = task_clean.strip()
-            if not task_clean:
-                task_clean = cmd
-            return f"ACTION_CODER_TASK|{task_clean}"
-
-        # ৭. এনএইটেন ইউনিভার্সাল ওয়ার্কফ্লো অটোমেশন (Powered by n8n)
-        n8n_kws = [
-            "এনএইটেন", "n8n", "অটোমেশন ফ্লো", "ওয়ার্কফ্লো", "workflow", "ওয়েবহুক", "webhook",
-            "নোশনে পাঠাও", "গুগল শিটে সেভ", "স্ল্যাকে পাঠাও", "টেলিগ্রামে মেসেজ"
-        ]
-        if any(kw in cmd for kw in n8n_kws):
-            task_clean = cmd
-            for kw in ["এনএইটেন", "n8n"]:
-                task_clean = task_clean.replace(kw, "")
-            task_clean = task_clean.strip()
-            if not task_clean:
-                task_clean = cmd
-            return f"ACTION_N8N_TASK|{task_clean}"
-
-        # ৮. ফাস্টএপিআই গেটওয়ে ও ব্যাকএন্ড সার্ভার (Powered by FastAPI)
-        api_kws = [
-            "এপিআই সার্ভার", "api server", "ফাস্টএপিআই", "fastapi", "এপিআই চালু", "সার্ভার চালু",
-            "এপিআই ওপেন", "এপিআই ডক", "সোয়েগার ডক", "swagger doc", "এপিআই স্ট্যাটাস", "api docs", "api status"
-        ]
-        if any(kw in cmd for kw in api_kws):
-            task_clean = cmd
-            for kw in ["ফাস্টএপিআই", "fastapi", "এপিআই"]:
-                task_clean = task_clean.replace(kw, "")
-            task_clean = task_clean.strip()
-            if not task_clean:
-                task_clean = cmd
-            return f"ACTION_API_GATEWAY_TASK|{task_clean}"
-
-        # ৯. ল্যাংগ্রাফ মাল্টি-এজেন্ট ব্রেন ও স্টেট মেশিন (Powered by LangGraph)
-        brain_kws = [
-            "ল্যাংগ্রাফ", "langgraph", "মাল্টি এজেন্ট", "মাল্টি-এজেন্ট", "এজেন্ট ব্রেন",
-            "ব্রেন স্ট্যাটাস", "ব্রেন চালাও", "ব্রেন মেমোরি", "ব্রেন হিস্ট্রি", "গ্রাফ রান করো"
-        ]
-        if any(kw in cmd for kw in brain_kws):
-            task_clean = cmd
-            for kw in ["ল্যাংগ্রাফ", "langgraph", "ব্রেন"]:
-                task_clean = task_clean.replace(kw, "")
-            task_clean = task_clean.strip()
-            if not task_clean:
-                task_clean = cmd
-            return f"ACTION_BRAIN_TASK|{task_clean}"
 
         # ৯খ. লোকাল পিসি ফাইল সার্চ (Google সার্চে যাওয়ার আগে চেক)
         local_file_nouns = ["ফাইল", "file", "পিডিএফ", "pdf", "docx", "ডকুমেন্ট", "document", "রিজিউম", "resume", "cv", "নোটস", "notes"]
