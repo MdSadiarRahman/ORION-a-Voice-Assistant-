@@ -15,8 +15,7 @@ A. PROJECT STRUCTURE
                              voice_recognizer_helper.py
 - File search module:        src/document_intelligence/file_search.py (Phase 1, new)
                              src/document_agent/document_task_runner.py (legacy)
-- Document reader module:    src/document_intelligence/document_reader.py (Phase 2, new)
-                             src/document_agent/pymupdf_reader.py (legacy)
+- Document reader module:    src/document_agent/pymupdf_reader.py
                              src/docling_agent/docling_converter.py
 - Assignment solver module:  src/assignment_agent/assignment_controller.py
 - Voice input module:        src/helpers/voice_recognizer_helper.py
@@ -93,8 +92,7 @@ E. DOCUMENT READING
 - Whether large documents are chunked:
   NO. Only raw_text_preview[:3000] is passed.
 - Whether scanned PDFs are supported:
-  DocumentReader detects scanned PDFs (status="scanned"), but OCR extraction
-  via pytesseract is not yet wired in.
+  OCR extraction is not yet wired into the active document workflow.
 
 F. VOICE SYSTEM
 --------------------------------------------------------------------------------
@@ -121,7 +119,7 @@ Problem | Root Cause | Relevant File | Recommended Fix
 --------|------------|---------------|----------------
 1. Opens Google instead of finding local PDF/Word files | Unmatched phrasing falls through to Google Search branch | src/command_processor.py | Route document/file search intents to DocumentWorkflow before Google Search fallback
 2. Cannot find all relevant documents | Legacy search only checked limited folders; no index/ranking | src/document_intelligence/file_search.py, document_indexer.py | Complete Phase 3 (ranking) and Phase 9 (background indexer)
-3. Cannot read & analyze complete documents | Only 3000-char preview sent; no chunking; OCR not wired; Gemini missing | src/document_intelligence/document_reader.py, document_analyzer.py | Add OCR fallback for scanned PDFs and chunked analysis via Ollama/LLM
+3. Cannot read & analyze complete documents | Only 3000-char preview sent; no chunking; OCR not wired; Gemini missing | src/document_agent/pymupdf_reader.py, document_analyzer.py | Add OCR fallback for scanned PDFs and chunked analysis via Ollama/LLM
 4. Unclear voice output | gTTS was missing (fixed in .venv); SAPI5 English voice read Bengali | src/helpers/tts_helper.py | Keep gTTS + Volume=1.0; optionally add edge-tts for offline-like clarity
 5. Cannot answer general conversational questions | GeminiClient has no API key and google-generativeai is not installed | src/intelligence/gemini_client.py | Add local Ollama (qwen3:4b) provider/fallback in GeminiClient
 6. Cannot answer current date, weekday, or external knowledge | Date/time only handled by rigid keywords; no LLM or web-answer tool | src/command_processor.py, src/intelligence/decision_engine.py | Inject current date/weekday into LLM system prompt; add web search summary
@@ -131,7 +129,7 @@ Summary Status:
 - Current LLM provider and model:  Google Gemini (unconfigured) | Local Ollama running with qwen3:4b (unused)
 - Current API status:              Gemini API unavailable (no key, no SDK); Ollama API healthy on localhost:11434
 - Current file search status:      Phase 1 FileSearchEngine implemented & tested; Phase 9 indexer pending
-- Current document reader status:  Phase 2 DocumentReader implemented & tested; OCR & chunking pending
+- Current document reader status:  Active PyMuPDF/Docling readers; scanned-PDF OCR & chunking pending
 - Current voice status:            gTTS installed & Volume=1.0 set in TtsHelper
 
 Exact files that need modification (upon your approval):

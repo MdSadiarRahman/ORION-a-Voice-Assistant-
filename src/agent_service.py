@@ -13,7 +13,6 @@ from src.helpers.voice_recognizer_helper import VoiceRecognizerHelper
 from src.helpers.desktop_automation_helper import DesktopAutomationHelper
 from src.helpers.battery_helper import BatteryHelper
 from src.helpers.search_helper import SearchHelper
-from src.helpers.notification_helper import NotificationHelper
 from src.browser_agent.browser_task_runner import BrowserTaskRunner
 from src.document_agent.document_task_runner import DocumentTaskRunner
 from src.docling_agent.docling_task_runner import DoclingTaskRunner

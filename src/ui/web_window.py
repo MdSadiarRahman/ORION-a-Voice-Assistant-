@@ -170,7 +170,7 @@ class VoiceMateBridge:
             except Exception:
                 pass
 
-        # Engine detection (mirrors main_window.py logic)
+        # Detect the active language-model engine for the HUD.
         engine = "🧠 Autonomous NLU"
         if os.getenv("GEMINI_API_KEY"):
             engine = "⚡ Gemini 3.8 Flash"
