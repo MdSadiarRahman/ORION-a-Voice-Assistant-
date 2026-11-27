@@ -22,32 +22,25 @@ VoiceMate হলো উইন্ডোজ ল্যাপটপ ও ডেস্
    - GUI-তে **"📑 ডকলিং"** বাটনে ক্লিক করে ফাইল নির্বাচন ও কনভার্সন করার সুবিধা।
 
 3. **ডিটারমিনিস্টিক ওয়েব অটোমেশন ও মিডিয়া প্লেয়ার (Powered by Microsoft Playwright)**:
-   - *"ইউটিউবে রবীন্দ্রসংগীত প্লে করো"* বললে ব্রাউজার স্বয়ংক্রিয়ভাবে খুলে প্রথম ভিডিওটি প্লে করে দেয় (`page.locator()`)।
-   - *"ওয়েব স্ক্রিনশট নাও https://github.com"* বললে নির্দিষ্ট ওয়েবসাইটের ফুল-পেজ বা ভিউপোর্ট স্ক্রিনশট তুলে সেভ করে।
-   - *"হোয়াটসঅ্যাপ ওয়েব ওপেন করো"* বললে পারসিস্টেন্ট ব্রাউজার কনটেক্সট চালু করে যাতে কুকিজ ও লগইন সেশন সংরক্ষিত থাকে।
-   - Auto-waiting locators ব্যবহার করে, তাই কোনো ম্যানুয়াল স্লিপ দরকার হয় না।
+   - YouTube কমান্ডে ভিডিও বা সার্চ পেজ খোলে; autoplay সব সাইট/ব্রাউজার পরিস্থিতিতে নিশ্চিত নয়।
+   - Playwright ও browser binary পাওয়া গেলে নির্দিষ্ট URL-এর screenshot তুলে সেভ করে; fallback mode কেবল default browser-এ URL খোলে, screenshot নিতে পারে না।
+   - WhatsApp Web-এর persistent profile local-এ সংরক্ষিত হয়; লগইন ব্যবহারকারীকে নিজে করতে হবে।
    - GUI-তে **"⚡ অটোমেশন"** বাটনে ক্লিক করে সরাসরি যেকোনো অটোমেশন নির্দেশ দেওয়া যায়।
 
 4. **ডেভেলপার ক্যানভাস ও কোড ইন্টেলিজেন্স (Powered by OpenHands Agent Canvas)**:
-   - *"ওপেনহ্যান্ডস ক্যানভাস চালু করো"* বললে OpenHands ক্যানভাস সার্ভার চালু হয় এবং ব্রাউজারে ফুল-স্ট্যাক কোডিং ক্যানভাস (localhost:8000) খুলে যায়।
-   - *"কোড অডিট করো"* বা *"কোড রিভিউ করো"* বললে পুরো প্রোজেক্টের পাইথন ফাইল স্ক্যান করে সিনট্যাক্স ও কোড কোয়ালিটি রিপোর্ট প্রদান করে।
+   - *"ওপেনহ্যান্ডস ক্যানভাস চালু করো"* বললে default `localhost:8000` পরীক্ষা করে; চালু OpenHands server থাকলেই browser খোলে, server নিজে install/start করে না।
+   - *"কোড অডিট করো"* বা *"কোড রিভিউ করো"* বললে dependency/build folder বাদ দিয়ে Python syntax পরীক্ষা করে; এটি পূর্ণ code-quality/security audit নয়।
    - *"গিট স্ট্যাটাস দেখো"* বললে গিট রেপোজিটরিতে কোন কোন ফাইল মডিফাই হয়েছে তা বিশ্লেষণ করে জানিয়ে দেয়।
-   - *"ফাইল ট্রি দেখাও"* বললে প্রোজেক্টের সম্পূর্ণ ডিরেক্টরি স্ট্রাকচার ভিজ্যুয়াল ট্রিতে তৈরি করে।
-   - *"টার্মিনালে চালাও [command]"* বললে নিরাপদ স্যান্ডবক্স পলিসি যাচাই করে রিয়েল-টাইম ACP ইভেন্ট স্ট্রিমসহ কমান্ড এক্সিকিউট করে।
-   - GUI-তে **"💻 ক্যানভাস"** বাটনে ক্লিক করে যেকোনো ডেভেলপার অ্যাকশন সিলেক্ট করার সুবিধা।
+   - *"ফাইল ট্রি দেখাও"* সীমিত depth-এর workspace tree দেয়। Terminal helper-এ কেবল `dir`, `ls`, `python --version`, `git status`, `echo ...` allowlist করা আছে; arbitrary shell command চলে না।
+   - Background task-এর event listener-রা local progress/completion/error পায়।
 
-5. **এআই পেয়ার প্রোগ্রামার ও রেজিলিয়েন্ট কোড এডিটিং (Powered by Aider)**:
-   - **Pattern A & C (SEARCH/REPLACE Blocks):** পুরো ফাইল নতুন করে না লিখে শুধুমাত্র কাঙ্ক্ষিত কোড ব্লক আপডেট করা (`<<<<<<< SEARCH ... ======= ... >>>>>>> REPLACE`)।
-   - **রেপো ম্যাপ (AST RepoMap Generator):** *"রেপো ম্যাপ তৈরি করো"* বললে সম্পূর্ণ কোডবেস স্ক্যান করে ক্লাস, মেথড ও ফাংশন সিগনেচার দিয়ে কমপ্যাক্ট কনটেক্সট ম্যাপ তৈরি করে।
-   - **অটোমেটেড গিট কমিট ও সেফটি নেট:** প্রতিটি কোড প্যাচ করার পূর্বে স্বয়ংক্রিয় ব্যাকআপ নেওয়া হয় এবং সফল আপডেটের পর স্বয়ংক্রিয় সেমান্টিক গিট কমিট সম্পন্ন হয়।
-   - **রোলব্যাক সাপোর্ট:** কোডে অসঙ্গতি দেখা দিলে *"কোড রোলব্যাক করো"* বললে মুহূর্তেই পূর্বাবস্থায় রিস্টোর করা যায়।
-   - GUI-তে **"🤖 এআই কোডার"** বাটনে ক্লিক করে সরাসরি কোড এডিটিং বা রেপো ম্যাপ কমান্ড দেওয়া যায়।
+5. **Local code editing & repository map (Aider-compatible format)**:
+   - User-provided `<<<<<<< SEARCH ... ======= ... >>>>>>> REPLACE` patch কেবল একটিমাত্র exact match পেলে apply হয়; আগে backup নেয় এবং workspace-এর বাইরের path block করে।
+   - *"রেপো ম্যাপ তৈরি করো"* Python AST থেকে সীমিতসংখ্যক file-এর top-level class/function map করে।
+   - Rollback-এর জন্য নির্দিষ্ট filename দিতে হয়; স্বয়ংক্রিয় Git commit বা AI-generated code edit হয় না।
 
 6. **অটোনোমাস ব্রাউজার এজেন্ট (Browser-Use 1.0 Powered Web Agent)**:
-   - *"ব্রাউজারে গিয়ে ঢাকা বিশ্ববিদ্যালয়ের ওয়েবসাইট দেখো"* বা *"ব্রাউজারে গিয়ে আজকের আবহাওয়ার খবর দেখো"* বললে এজেন্ট স্বয়ংক্রিয়ভাবে ব্রাউজার খুলে তথ্য সংগ্রহ করে।
-   - Pydantic AI, REPL ও Chrome DevTools Protocol (CDP)-এর ওপর ভিত্তি করে তৈরি।
-   - অ্যাক্সেসিবিলিটি ট্রি (AXTree) ও রিয়েল মাউস ক্লিক/স্ক্রল দিয়ে ব্রাউজার অপারেশন পরিচালনা করে।
-   - GUI-তে **"🌐 ব্রাউজার এজেন্ট"** বাটন দিয়েও সরাসরি যেকোনো ব্রাউজিং টাস্ক দেওয়া যায়।
+   - Browser-Use dependency অনুপস্থিত থাকলে fallback কেবল অনুরোধ করা URL/search browser-এ খোলে; page content সংগ্রহের দাবি করে না।
 
 7. **হ্যান্ডস-ফ্রি টাইপিং মোড (Voice Typing / Dictation)**:
    - *"টাইপিং মোড চালু করো"* বা *"টাইপ করো"* বললে টাইপিং মোড সক্রিয় হয়।
@@ -104,6 +97,10 @@ VoiceMate হলো উইন্ডোজ ল্যাপটপ ও ডেস্
    - **Durable Checkpointing & Multi-Turn Memory:** `MemorySaver` ও `thread_id` সেশনের মাধ্যমে প্রতিটি কথোপকথন মনে রাখা ও কনটেক্সট ধারাবাহিকতা বজায় রাখা।
    - **Human-In-The-Loop Safety Guardrails:** সংবেদনশীল অ্যাকশনের ক্ষেত্রে (ডিলিট, রোলব্যাক, সার্ভিস বন্ধ) ব্যবহারকারীকে মুখে প্রশ্ন করে অনুমতি নিয়ে নেওয়া।
    - GUI-তে **"🧠 ব্রেন"** বাটন দিয়ে এক ক্লিকে মাল্টি-এজেন্ট স্টেট মেশিন ট্রিগার ও হিস্ট্রি দেখার সুবিধা।
+
+**Local website prototype:** website request দিলে VoiceMate static HTML/CSS/JavaScript project তৈরি করে এবং localhost preview যাচাই করে। এটি prototype—authentication, production backend বা real business/patient data সংযুক্ত নয়।
+
+**External integrations:** Live product prices ও cited internet research default build-এ উপলভ্য নয়; সেগুলোর জন্য data source/service configure করতে হবে। অনুপস্থিত integration-কে সফল দেখানোর পরিবর্তে task ব্যর্থতার কারণ জানানো হয়।
 
 ---
 
@@ -163,9 +160,8 @@ voicemate-main/
 │   ├── canvas_agent/                # 💻 OpenHands ডেভেলপার ক্যানভাস ও কোড ইন্টেলিজেন্স
 │   │   ├── __init__.py
 │   │   ├── canvas_config.py         # নোড ও পাথ কনফিগারেশন
-│   │   ├── canvas_event_stream.py   # ACP ইভেন্ট স্ট্রিম (Thinking, Action, Terminal)
-│   │   ├── canvas_workspace_runner.py # স্যান্ডবক্স টার্মিনাল, গিট ও কোড অডিট
-│   │   ├── canvas_controller.py     # ক্যানভাস সার্ভার ও লাইফসাইকেল কন্ট্রোলার
+│   │   ├── canvas_event_stream.py   # local progress/completion/error events
+│   │   ├── canvas_workspace_runner.py # read-only tree, git status, Python syntax audit
 │   │   ├── canvas_task_runner.py    # ব্যাকগ্রাউন্ড থ্রেড ডিসপ্যাচার
 │   │   └── canvas_fallback.py       # ফলব্যাক ডেভেলপার হ্যান্ডলার
 │   │
@@ -174,10 +170,13 @@ voicemate-main/
 │   │   ├── coder_config.py          # কোডার ও ব্যাকআপ পাথ কনফিগারেশন
 │   │   ├── search_replace_engine.py # SEARCH/REPLACE ব্লক প্যাচিং ইঞ্জিন (Patterns A, C)
 │   │   ├── repo_map_generator.py    # AST রেপো ম্যাপ ও সিম্বল ইনডেক্সিং
-│   │   ├── git_manager.py           # অটো সেমান্টিক গিট কমিট ও রোলব্যাক সেফটি
-│   │   ├── coder_controller.py      # কোর কোডিং ও প্যাচিং কন্ট্রোলার
+│   │   ├── git_manager.py           # backup ও file-specific restore
 │   │   ├── coder_task_runner.py     # ব্যাকগ্রাউন্ড থ্রেড ডিসপ্যাচার
 │   │   └── coder_fallback.py        # ফলব্যাক কোড রিডার
+│   │
+│   ├── website_agent/               # 🏗️ Static website scaffold ও localhost preview
+│   │   ├── __init__.py
+│   │   └── website_controller.py    # project generation and local HTTP verification
 │   │
 │   ├── n8n_agent/                   # 🔄 n8n এন্টারপ্রাইজ ওয়ার্কফ্লো অটোমেশন ও ওয়েবহুক সাবসিস্টেম
 │   │   ├── __init__.py

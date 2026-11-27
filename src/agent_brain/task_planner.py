@@ -286,7 +286,7 @@ class TaskPlanner:
     ) -> ExecutionPlan:
         """
         Executes a planned workflow sequentially, passing data between agents,
-        verifying intermediate results, and self-correcting on failure.
+        and stops dependent work when a step fails.
         """
         from src.agent_brain.tool_registry import ToolRegistry, PermissionLevel
 
@@ -328,13 +328,16 @@ class TaskPlanner:
                 step.status = StepStatus.FAILED
                 step.error = msg
                 logger.error(f"Step {step.step_id} failed: {msg}")
-                # Continue if non-fatal
-                if idx < len(plan.steps) - 1:
-                    continue
-                else:
-                    break
+                for later_step in plan.steps[idx + 1:]:
+                    later_step.status = StepStatus.SKIPPED
+                    later_step.error = f"আগের ধাপ {step.step_id} ব্যর্থ হওয়ায় চালানো হয়নি।"
+                plan.is_completed = False
+                plan.final_summary = f"ধাপ {step.step_id} ব্যর্থ হয়েছে: {msg}"
+                return plan
 
-        plan.is_completed = any(s.status == StepStatus.COMPLETED for s in plan.steps)
+        plan.is_completed = bool(plan.steps) and all(
+            step.status == StepStatus.COMPLETED for step in plan.steps
+        )
 
         # Build final spoken and text summary
         if plan.domain == TaskDomain.ASSIGNMENT_DOCUMENT:

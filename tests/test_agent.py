@@ -5,6 +5,7 @@ Includes tests for Core Voice, System, Desktop, Browser-Use, and Document Intell
 import unittest
 from unittest.mock import patch
 from pathlib import Path
+import tempfile
 import sys
 import os
 
@@ -337,6 +338,12 @@ def multiply(a, b):
         self.assertTrue(success)
         self.assertIn("def multiply", new_code)
 
+        unchanged, success, _ = SearchReplaceEngine.apply_replacement(original_code, "missing", "replacement")
+        self.assertFalse(success)
+        self.assertEqual(unchanged, original_code)
+        with self.assertRaises(ValueError):
+            SearchReplaceEngine.resolve_target(Path(__file__).resolve().parents[1], "../outside.py")
+
         # 3. RepoMap Generator
         map_res = RepoMapGenerator.generate_repo_map(max_files=10)
         self.assertTrue(map_res["success"])
@@ -344,10 +351,43 @@ def multiply(a, b):
         self.assertIn("class ", map_res["repo_map"])
 
         # 4. GitSafetyManager Backup
-        dummy_file = Path(__file__).resolve()
-        backup_path = GitSafetyManager.create_backup(dummy_file)
-        self.assertTrue(backup_path.exists())
-        self.assertTrue(backup_path.stat().st_size > 0)
+        with tempfile.TemporaryDirectory() as temp_dir:
+            workspace = Path(temp_dir)
+            dummy_file = workspace / "backup.txt"
+            dummy_file.write_text("test backup", encoding="utf-8")
+            with patch("src.coder_agent.git_manager.CANVAS_WORKSPACE_DIR", workspace), \
+                 patch("src.coder_agent.git_manager.CODER_BACKUPS_DIR", workspace / "backups"):
+                backup_path = GitSafetyManager.create_backup(dummy_file)
+            self.assertTrue(backup_path.exists())
+            self.assertGreater(backup_path.stat().st_size, 0)
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            workspace = Path(temp_dir)
+            target = workspace / "example.py"
+            target.write_text("def add(a, b):\n    return a + b\n", encoding="utf-8")
+            backup_dir = workspace / "backups"
+            with (
+                patch("src.coder_agent.coder_task_runner.CANVAS_WORKSPACE_DIR", workspace),
+                patch("src.coder_agent.git_manager.CANVAS_WORKSPACE_DIR", workspace),
+                patch("src.coder_agent.git_manager.CODER_BACKUPS_DIR", backup_dir),
+            ):
+                result = CoderTaskRunner._apply_edit_blocks(
+                    [
+                        ("example.py", "def add", "def sum"),
+                        ("example.py", "return a + b", "return a - b"),
+                    ]
+                )
+            self.assertTrue(result["success"], result)
+            self.assertIn("def sum", target.read_text(encoding="utf-8"))
+            self.assertIn("return a - b", target.read_text(encoding="utf-8"))
+            self.assertTrue(Path(result["backups"][0]).is_file())
+            with (
+                patch("src.coder_agent.git_manager.CANVAS_WORKSPACE_DIR", workspace),
+                patch("src.coder_agent.git_manager.CODER_BACKUPS_DIR", backup_dir),
+            ):
+                restored = GitSafetyManager.restore_latest_backup("example.py")
+            self.assertEqual(restored, target)
+            self.assertIn("def add", target.read_text(encoding="utf-8"))
 
         # 5. Task Runner Parser
         parsed_map = CoderTaskRunner._parse_and_execute("রেপো ম্যাপ তৈরি করো")

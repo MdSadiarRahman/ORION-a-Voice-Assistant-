@@ -65,7 +65,7 @@ class IntentRouter:
             r"^(?:open|launch|start|খোলো|খুলো|চালু\s*করো|chalu\s*koro|kholo)\s+(.+)$", lower
         )
         open_suffix = re.match(
-            r"^(.+?)\s+(?:open|open\s*koro|kholo|chalu\s*koro|chalao|খোলো|খুলো|চালু\s*করো|চালাও)$", lower
+            r"^(.+?)\s+(?:open|open\s*koro|kholo|chalu\s*koro|খোলো|খুলো|চালু\s*করো)$", lower
         )
         app_target = None
         if open_prefix:

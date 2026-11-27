@@ -6,6 +6,7 @@ Safety Guard Protocol, and Action Verification.
 """
 import unittest
 import time
+from unittest.mock import patch
 from src.intelligence.intent_engine import Intent, IntentEngine
 from src.intelligence.fast_router import FastCommandRouter
 from src.intelligence.context_manager import ContextManager
@@ -14,11 +15,37 @@ from src.intelligence.safety_guard import SafetyGuard
 from src.intelligence.action_verifier import ActionVerifier
 from src.intelligence.decision_engine import HybridDecisionEngine
 from src.helpers.media_controller import MediaController
+from src.helpers.search_helper import SearchHelper
 
 
 class TestIntelligentAgent(unittest.TestCase):
     def setUp(self):
         self.engine = HybridDecisionEngine()
+        patches = [
+            patch.object(
+                MediaController,
+                "play_youtube",
+                return_value=(
+                    True,
+                    "Test Song",
+                    "ইউটিউবে গানটি চালানো হচ্ছে।",
+                    "https://www.youtube.com/watch?v=12345678901",
+                ),
+            ),
+            patch.object(SearchHelper, "open_website", return_value="ওয়েবসাইট ওপেন করা হচ্ছে"),
+            patch.object(SearchHelper, "search_in_youtube", return_value="ইউটিউবে সার্চ করা হচ্ছে"),
+            patch.object(MediaController, "pause", return_value=(True, "পজ করা হয়েছে।")),
+            patch.object(MediaController, "resume", return_value=(True, "পুনরায় চালু করা হয়েছে।")),
+            patch.object(MediaController, "stop", return_value=(True, "বন্ধ করা হয়েছে।")),
+            patch.object(MediaController, "next_track", return_value=(True, "পরের গান।")),
+            patch.object(MediaController, "previous_track", return_value=(True, "আগের গান।")),
+            patch.object(MediaController, "volume_up", return_value=(True, "ভলিউম বাড়ানো হয়েছে।")),
+            patch.object(MediaController, "volume_down", return_value=(True, "ভলিউম কমানো হয়েছে।")),
+            patch.object(MediaController, "toggle_mute", return_value=(True, "মিউট বদলানো হয়েছে।")),
+        ]
+        for patcher in patches:
+            patcher.start()
+            self.addCleanup(patcher.stop)
 
     def test_nlu_song_variations(self):
         """1. Natural Language Understanding for song requests across dialects."""

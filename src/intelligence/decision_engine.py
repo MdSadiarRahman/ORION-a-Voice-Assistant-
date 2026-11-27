@@ -62,7 +62,11 @@ class HybridDecisionEngine:
         # STEP 0: Zero-Cost Python Rules (IntentRouter + ToolRegistry)
         # -------------------------------------------------------------
         routed = self.intent_router.route(raw_text)
-        if routed.confidence >= 0.85 and self.tool_registry.has_tool(routed.intent):
+        if (
+            routed.confidence >= 0.85
+            and routed.intent != "OPEN_APPLICATION"
+            and self.tool_registry.has_tool(routed.intent)
+        ):
             tool_res = self.tool_registry.execute(routed.intent, **routed.parameters)
             if tool_res.get("ok"):
                 reply = tool_res.get("reply", "")

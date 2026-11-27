@@ -157,10 +157,11 @@ class ToolRegistry:
                         p_dir = scaffold_res["project_dir"]
                     port, live_url = WebsiteController.launch_local_server(p_dir)
                     verified, v_msg = WebsiteController.verify_server(live_url)
-                    return True, {"port": port, "live_url": live_url, "is_verified": verified}, v_msg
+                    return verified, {"port": port, "live_url": live_url, "is_verified": verified}, v_msg
                 elif tool_name == "verify_website_deployment":
-                    live_url = parameters.get("live_url", "http://localhost:8090/index.html")
-                    return True, {"is_verified": True, "live_url": live_url}, f"ওয়েবসাইট লাইভ রয়েছে: {live_url}"
+                    live_url = parameters.get("live_url", "http://127.0.0.1:8090/index.html")
+                    verified, message = WebsiteController.verify_server(live_url)
+                    return verified, {"is_verified": verified, "live_url": live_url}, message
                 else:
                     data = WebsiteController.build_and_deploy_website(reqs)
                     return True, data, data.get("voice_summary", "ওয়েবসাইট সফলভাবে তৈরি ও লাইভ করা হয়েছে।")
