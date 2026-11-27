@@ -4,6 +4,7 @@ Parses, interprets and routes all Bengali and English voice/text commands
 for the laptop assistant.
 """
 import re
+import unicodedata
 import urllib.parse
 from typing import Optional, Tuple
 from src.helpers.app_helper import AppHelper
@@ -12,6 +13,7 @@ from src.helpers.date_helper import DateHelper
 from src.helpers.desktop_automation_helper import DesktopAutomationHelper
 from src.helpers.battery_helper import BatteryHelper
 from src.helpers.search_helper import SearchHelper
+from src.helpers.media_controller import MediaController
 from src.helpers.camera_helper import CameraHelper
 from src.helpers.vision_helper import VisionHelper
 from src.helpers.sms_helper import SmsHelper
@@ -32,6 +34,20 @@ class CommandProcessor:
         "ফোন": "phone",
         "মেসেজ": "message",
         "হোয়াটসঅ্যাপ": "whatsapp",
+        "হোয়াটসঅ্যাপ": "whatsapp",
+        "টেলিগ্রাম": "telegram",
+        "ভিএলসি": "vlc",
+        "ওয়ার্ড": "word",
+        "ওয়ার্ড": "word",
+        "এক্সেল": "excel",
+        "ডিসকর্ড": "discord",
+        "স্পটিফাই": "spotify",
+        "জুম": "zoom",
+        "অ্যান্টিগ্র্যাভিটি": "antigravity",
+        "অ্যান্টি গ্র্যাভিটি": "antigravity",
+        "এন্টিগ্র্যাভিটি": "antigravity",
+        "এন্টি গ্র্যাভিটি": "antigravity",
+        "anti gravity": "antigravity",
         "ম্যাসেঞ্জার": "messenger",
         "নোটপ্যাড": "notepad",
         "ক্যালকুলেটর": "calculator",
@@ -97,27 +113,30 @@ class CommandProcessor:
                 task_clean = cmd
             return f"ACTION_BROWSER_TASK|{task_clean}"
 
-        # ২b. প্রোডাক্ট রিসার্চ ও প্রাইস কম্প্যারিজন (Powered by ProductAgent)
-        try:
-            from src.intelligence.fast_router import FastCommandRouter
-            from src.intelligence.intent_engine import Intent
-            match_res = FastCommandRouter.match(command)
-            if match_res and match_res.intent in [
-                Intent.PRODUCT_SEARCH,
-                Intent.PRICE_CHECK,
-                Intent.COMPARE_PRODUCTS,
-                Intent.PRODUCT_SPECS,
-                Intent.CHEAPEST_PRODUCT,
-                Intent.OPEN_PRODUCT_PAGE
-            ]:
-                if cls._decision_engine is None:
-                    from src.intelligence.decision_engine import HybridDecisionEngine
-                    cls._decision_engine = HybridDecisionEngine()
-                _, h_reply = cls._decision_engine.process_query(command)
-                if h_reply and "বুঝতে পারিনি" not in h_reply:
-                    return h_reply
-        except Exception:
-            pass
+        
+
+
+        # ২b. অ্যাসাইনমেন্ট সলভার এজেন্ট (Direct Assignment Routing)
+        assignment_kws = [
+            "অ্যাসাইনমেন্ট", "assignment", "হোমওয়ার্ক", "homework", "প্রশ্নপত্র",
+            "সলভ করো", "solve", "সমাধান করো", "সমাধান দাও", "উত্তর দাও", "উত্তর বলো",
+            "answer", "প্রশ্নের উত্তর", "question solve", "question answer",
+            "পরীক্ষার প্রশ্ন", "পড়াশোনা", "পড়া", "study help"
+        ]
+        assignment_action_kws = [
+            "সলভ", "solve", "সমাধান", "উত্তর", "answer", "করো", "দাও",
+            "বলো", "help", "লিখো", "write", "বানাও", "create", "তৈরি"
+        ]
+        has_assignment_kw = any(kw in cmd for kw in assignment_kws)
+        has_assignment_action = any(kw in cmd for kw in assignment_action_kws)
+        if has_assignment_kw and has_assignment_action:
+            task_clean = cmd
+            for kw in ["অ্যাসাইনমেন্ট", "assignment", "হোমওয়ার্ক", "homework"]:
+                task_clean = task_clean.replace(kw, "")
+            task_clean = task_clean.strip()
+            if not task_clean:
+                task_clean = cmd
+            return f"ACTION_ASSIGNMENT_TASK|{task_clean}"
 
         # ২c. অটোনোমাস মাল্টি-স্টেপ টাস্ক প্ল্যানার (Assignment, Website Development, Deep Research)
         if any(w in cmd for w in ["assignment", "অ্যাসাইনমেন্ট", "website", "ওয়েবসাইট", "রিসার্চ রিপোর্ট", "research report"]) and any(w in cmd for w in ["বানিয়ে", "তৈরি", "build", "create", "সলভ", "solve", "সমাধান", "docx", "pdf", "রিসার্চ", "report"]):
@@ -256,7 +275,7 @@ class CommandProcessor:
         search_keywords = ["search", "সার্চ", "খুঁজো", "খুঁজুন", "দেখাও", "দেখবো", "খুঁজে দাও"]
         yt_keywords = ["youtube", "ইউটিউবে", "ইউটিউব"]
         gg_keywords = ["google", "গুগলে", "গুগল"]
-        open_keywords = ["open", "খুলো", "খোলো", "ওপেন", "চালু"]
+        open_keywords = ["open", "খুলো", "খোলো", "ওপেন", "চালু", "kholo", "chalu"]
 
         contains_yt = any(kw in cmd for kw in yt_keywords)
         contains_gg = any(kw in cmd for kw in gg_keywords)
@@ -277,6 +296,15 @@ class CommandProcessor:
             )
 
             query = cmd
+            # Direct YouTube play command (e.g., 'youtube e <song>' or Bengali variants)
+            if cmd.startswith('youtube e '):
+                yt_query = cmd[len('youtube e '):].strip()
+                success, title, msg, watch_url = MediaController.play_youtube(yt_query)
+                return msg
+            if cmd.startswith('youtube এ '):
+                yt_query = cmd[len('youtube এ '):].strip()
+                success, title, msg, watch_url = MediaController.play_youtube(yt_query)
+                return msg
             for word in all_to_remove:
                 pattern = rf"(^|[^\w\u0980-\u09FF]){re.escape(word)}($|[^\w\u0980-\u09FF])"
                 query = re.sub(pattern, " ", query, flags=re.IGNORECASE)
@@ -400,7 +428,10 @@ class CommandProcessor:
         # ১২. সাধারণ অ্যাপ ওপেন
         has_open_kw = any(kw in cmd for kw in open_keywords)
         app_name = cmd
-        to_clean = open_keywords + ["করো", "করুন", "দাও", "দিয়ে", "অ্যাপ", "app", "please", "প্লিজ"]
+        to_clean = open_keywords + [
+            "করো", "করুন", "দাও", "দিয়ে", "দিয়ে", "অ্যাপটি", "অ্যাপ", "app",
+            "please", "প্লিজ", "koro", "kore", "dao"
+        ]
         for kw in to_clean:
             app_name = re.sub(rf"(^|[^\w\u0980-\u09FF]){re.escape(kw)}($|[^\w\u0980-\u09FF])", " ", app_name, flags=re.IGNORECASE)
         app_name = re.sub(r"\s+", " ", app_name).strip()

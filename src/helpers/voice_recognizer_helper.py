@@ -100,8 +100,8 @@ class SoundDeviceMicrophone:
             except queue.Empty:
                 pass
 
-        avg_noise = sum(calib_chunks) / len(calib_chunks) if calib_chunks else 200.0
-        energy_threshold = max(avg_noise * 1.5, 300.0)
+        avg_noise = float(np.median(calib_chunks)) if calib_chunks else 200.0
+        energy_threshold = min(max(avg_noise * 1.5, 300.0), 1500.0)
 
         phrase_chunks = []
         is_user_speaking = False

@@ -20,6 +20,8 @@ class TtsHelper:
         self.on_done = on_done
         self.is_speaking = False
         self._engine = None
+        self._active_proc: Optional[subprocess.Popen] = None
+        self._speech_seq = 0
         self._init_engine()
 
     def _init_engine(self):
@@ -64,12 +66,19 @@ Start-Sleep -Milliseconds 300
 $player.Close()
 """
             enc = base64.b64encode(ps_script.encode("utf-16le")).decode("ascii")
-            subprocess.run(
+            proc = subprocess.Popen(
                 ["powershell.exe", "-NoProfile", "-NonInteractive", "-EncodedCommand", enc],
                 stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                timeout=20
+                stderr=subprocess.DEVNULL
             )
+            self._active_proc = proc
+            try:
+                proc.wait(timeout=20)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+            finally:
+                if self._active_proc is proc:
+                    self._active_proc = None
             try:
                 os.remove(tmp_path)
             except Exception:
@@ -103,16 +112,32 @@ try {{
         except Exception:
             return False
 
+    def stop_speaking(self):
+        """Interrupts any currently playing TTS subprocess."""
+        proc = self._active_proc
+        if proc is not None:
+            try:
+                proc.kill()
+            except Exception:
+                pass
+            self._active_proc = None
+
     def speak(self, text: str, sync: bool = False):
         """
         Speaks the given text using the best available TTS backend.
-        Thread-safe and non-blocking by default.
+        Thread-safe and non-blocking by default. Interrupts stale speech when a new utterance arrives.
         """
         if not text:
             return
 
+        self._speech_seq += 1
+        my_seq = self._speech_seq
+        self.stop_speaking()
+
         def _worker():
             with self._speak_lock:
+                if my_seq != self._speech_seq:
+                    return
                 self.is_speaking = True
                 if self.on_start:
                     try:
@@ -121,31 +146,32 @@ try {{
                         pass
 
                 print(f"[VoiceMate Voice]: {text}", flush=True)
-                spoken = False
+                try:
+                    spoken = False
 
-                # 1. Authentic Bengali TTS via gTTS when Bengali characters are present
-                if self._is_bengali(text):
-                    spoken = self._speak_bengali_gtts(text)
+                    # 1. Authentic Bengali TTS via gTTS when Bengali characters are present
+                    if self._is_bengali(text):
+                        spoken = self._speak_bengali_gtts(text)
 
-                # 2. Native pyttsx3 engine for offline / English speech
-                if not spoken and self._engine:
-                    try:
-                        self._engine.say(text)
-                        self._engine.runAndWait()
-                        spoken = True
-                    except Exception:
-                        pass
+                    # 2. Native pyttsx3 engine for offline / English speech
+                    if not spoken and self._engine:
+                        try:
+                            self._engine.say(text)
+                            self._engine.runAndWait()
+                            spoken = True
+                        except Exception:
+                            pass
 
-                # 3. Windows SAPI COM fallback
-                if not spoken:
-                    spoken = self._speak_sapi_com(text)
-
-                self.is_speaking = False
-                if self.on_done:
-                    try:
-                        self.on_done()
-                    except Exception:
-                        pass
+                    # 3. Windows SAPI COM fallback
+                    if not spoken:
+                        spoken = self._speak_sapi_com(text)
+                finally:
+                    self.is_speaking = False
+                    if self.on_done:
+                        try:
+                            self.on_done()
+                        except Exception:
+                            pass
 
         if sync:
             _worker()
@@ -154,6 +180,7 @@ try {{
             t.start()
 
     def shutdown(self):
+        self.stop_speaking()
         self.is_speaking = False
         if self._engine:
             try:
