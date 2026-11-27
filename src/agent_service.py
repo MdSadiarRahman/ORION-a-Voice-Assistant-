@@ -473,8 +473,32 @@ class AgentService:
             self.speak(response, start_listening_after=True)
             return
         else:
+            # Try HybridDecisionEngine (python_rules first, then Ollama, then Gemini)
             try:
                 res_intent, res_reply = self.decision_engine.process_query(spoken_text)
+                if res_intent and getattr(res_intent, "source", "") == "python_rules":
+                    # Execute the actual tool action from ToolRegistry result
+                    action = getattr(res_intent, "action", "")
+                    if action == "OPEN_APPLICATION":
+                        from src.intelligence.tool_registry import ToolRegistry
+                        tr = ToolRegistry()
+                        tool_res = tr.execute("OPEN_APPLICATION", app_name=res_intent.parameters.get("app_name", ""))
+                        reply = tool_res.get("reply", res_reply)
+                    elif action == "SEARCH_LOCAL_FILE":
+                        from src.document_intelligence.file_search import FileSearchEngine
+                        eng = FileSearchEngine()
+                        query = res_intent.parameters.get("query", spoken_text)
+                        results = eng.search(query, search_content=False, max_results=3)
+                        if results:
+                            names = "، ".join([r.filename for r in results[:3]])
+                            reply = f"আমি খুঁজে পেয়েছি: {names}"
+                        else:
+                            reply = "আপনার পিসিতে ফাইলটি খুঁজে পাওয়া যায়নি।"
+                    else:
+                        reply = res_reply
+                    if reply:
+                        self.speak(reply, start_listening_after=True)
+                        return
                 if res_reply:
                     self.speak(res_reply, start_listening_after=True)
                     return

@@ -10,6 +10,8 @@ from src.intelligence.context_manager import ContextManager
 from src.intelligence.gemini_client import GeminiClient
 from src.intelligence.ollama_client import OllamaClient
 from src.intelligence.action_verifier import ActionVerifier
+from src.intelligence.intent_router import IntentRouter
+from src.intelligence.tool_registry import ToolRegistry
 from src.intelligence.safety_guard import SafetyGuard
 from src.helpers.media_controller import MediaController
 from src.helpers.app_helper import AppHelper
@@ -37,10 +39,15 @@ class HybridDecisionEngine:
     Central brain determining user intent, selecting tools, enforcing safety,
     executing verified actions, and maintaining dialog context.
     """
-    def __init__(self, ollama_host: str = "http://localhost:11434", ollama_model: str = "qwen3:4b"):
+    def __init__(self, ollama_host: str = "http://localhost:11434", ollama_model: str = "qwen3:4b", provider: Optional[str] = None):
+        import os
+        self.provider = (provider or os.getenv("VOICEMATE_LLM_PROVIDER", "ollama")).strip().lower()
         self.gemini = GeminiClient()
         self.ollama = OllamaClient(host=ollama_host, model=ollama_model)
         self.context = ContextManager()
+        self.intent_router = IntentRouter()
+        self.tool_registry = ToolRegistry()
+        print(f"[LLM] Configured provider={self.provider}, ollama_model={ollama_model}, ollama_host={ollama_host}")
 
     def process_query(self, user_text: str) -> Tuple[IntentResult, str]:
         """
@@ -50,6 +57,24 @@ class HybridDecisionEngine:
         raw_text = (user_text or "").strip()
         if not raw_text:
             return IntentResult(Intent.UNKNOWN, "none", 0.0), ""
+
+        # -------------------------------------------------------------
+        # STEP 0: Zero-Cost Python Rules (IntentRouter + ToolRegistry)
+        # -------------------------------------------------------------
+        routed = self.intent_router.route(raw_text)
+        if routed.confidence >= 0.85 and self.tool_registry.has_tool(routed.intent):
+            tool_res = self.tool_registry.execute(routed.intent, **routed.parameters)
+            if tool_res.get("ok"):
+                reply = tool_res.get("reply", "")
+                intent_res = IntentResult(
+                    intent=Intent.UNKNOWN,
+                    confidence=routed.confidence,
+                    action=routed.intent,
+                    parameters=routed.parameters,
+                    raw_query=raw_text,
+                    source="python_rules",
+                )
+                return intent_res, reply
 
         # -------------------------------------------------------------
         # STEP 1: Context Follow-Up Resolution (Slot Filling & Confirmation)
@@ -109,10 +134,13 @@ class HybridDecisionEngine:
             intent_res = FastCommandRouter.match(raw_text)
 
         # -------------------------------------------------------------
-        # STEP 3a: Cloud AI Mode via Google Gemini API (High-Speed, 0% Laptop RAM/CPU)
+        # STEP 3a: Cloud AI Mode via Google Gemini API (only when provider == "gemini")
         # -------------------------------------------------------------
-        if not intent_res and self.gemini.is_available():
-            gemini_output = self.gemini.analyze_query(raw_text, self.context.history)
+        if not intent_res and self.provider == "gemini":
+            if not self.gemini.is_available():
+                print("[LLM ERROR] Provider 'gemini' selected, but GEMINI_API_KEY or google-generativeai is unavailable.")
+            else:
+                gemini_output = self.gemini.analyze_query(raw_text, self.context.history)
             if gemini_output:
                 intent_str = gemini_output.get("intent", "unknown")
                 action_str = gemini_output.get("action", "none")

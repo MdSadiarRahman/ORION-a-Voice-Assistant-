@@ -1,0 +1,151 @@
+================================================================================
+VOICEMATE PROJECT - COMPLETE DIAGNOSTIC REPORT
+Generated: 2026-11-28 00:14 (Asia/Dhaka)
+Workspace: d:\AI-Agent\ORION-a-Voice-Assistant-
+================================================================================
+
+A. PROJECT STRUCTURE
+--------------------------------------------------------------------------------
+- Main entry point:          main.py (and run_agent.bat)
+- Main agent file:           src/agent_service.py (AgentService)
+- Command / Intent router:   src/command_processor.py (CommandProcessor)
+- Decision engine:           src/intelligence/decision_engine.py (HybridDecisionEngine)
+- Tool / Helper files:       src/helpers/app_helper.py, desktop_automation_helper.py,
+                             search_helper.py, system_helper.py, tts_helper.py,
+                             voice_recognizer_helper.py
+- File search module:        src/document_intelligence/file_search.py (Phase 1, new)
+                             src/document_agent/document_task_runner.py (legacy)
+- Document reader module:    src/document_intelligence/document_reader.py (Phase 2, new)
+                             src/document_agent/pymupdf_reader.py (legacy)
+                             src/docling_agent/docling_converter.py
+- Assignment solver module:  src/assignment_agent/assignment_controller.py
+- Voice input module:        src/helpers/voice_recognizer_helper.py
+- Text-to-speech module:     src/helpers/tts_helper.py
+
+B. LLM CONFIGURATION
+--------------------------------------------------------------------------------
+- Provider name:             Google Gemini (src/intelligence/gemini_client.py)
+- Configured model names:    "gemini-3.8-flash", "gemini-flash-latest", "gemini-2.5-flash-lite"
+- API base URL:              Google AI Studio (google-generativeai SDK default)
+- Whether Ollama is configured:
+  NO. Ollama is NOT configured in GeminiClient or AssignmentController.
+- Whether an external API is configured:
+  YES, GeminiClient is written for Google Gemini API.
+- Whether fallback is configured:
+  Partial. If Gemini is unavailable, CommandProcessor falls back to rule-based
+  keyword matching and Google Search; AssignmentController falls back to a
+  hardcoded Bengali template.
+- Whether API key is available:
+  FALSE (GEMINI_API_KEY: False, GOOGLE_API_KEY: False; no .env file present).
+
+C. INTENT AND TOOL ROUTING
+--------------------------------------------------------------------------------
+- How user commands are classified:
+  CommandProcessor.process_command() uses ordered if/elif keyword checks first,
+  then falls back to HybridDecisionEngine (if triggered) or Google Search.
+- How tools are selected:
+  Hardcoded keyword lists in src/command_processor.py map phrases to
+  ACTION_* strings (e.g., ACTION_ASSIGNMENT_TASK|...), which AgentService
+  dispatches to the corresponding controller/helper.
+- Why local file search commands may open Google:
+  If a spoken phrase (e.g. from Bengali STT) misses an exact keyword in the
+  early branches (such as "এসাইনমেন্ট" vs "অ্যাসাইনমেন্ট" or "ফাইল খুঁজে দাও"),
+  execution falls through to the Google Search branch (lines 274-322 of
+  src/command_processor.py) and opens Google in the browser.
+- Whether general chat has a separate handler:
+  Only via GeminiClient ("conversation" intent in HybridDecisionEngine), which
+  currently fails because GEMINI_API_KEY is missing and google-generativeai
+  is not installed.
+- Whether web search is implemented:
+  Browser-based Google/YouTube search is implemented in SearchHelper, but there
+  is no headless web-search-and-summarize tool for answering external knowledge
+  questions directly.
+
+D. FILE SEARCH
+--------------------------------------------------------------------------------
+- Drives and folders searched:
+  - Legacy (document_task_runner.py / assignment_controller.py): documents/,
+    Downloads, Desktop, Documents, OneDrive.
+  - New Phase 1 (src/document_intelligence/file_search.py): Defaults to
+    Desktop, Downloads, Documents, OneDrive; supports any user-authorized
+    drive (C:\, D:\ detected).
+- Recursive search implemented:
+  YES in FileSearchEngine (os.walk with topdown pruning of protected dirs).
+- Supported file extensions:
+  .pdf, .docx, .doc, .txt, .md, .pptx, .xlsx, .csv
+- File indexing exists:
+  NO (Phase 9 document_indexer.py not yet implemented).
+- Permission errors handled:
+  YES in FileSearchEngine (skips excluded system folders and catches OSError).
+
+E. DOCUMENT READING
+--------------------------------------------------------------------------------
+- Installed PDF & DOCX libraries (verified in .venv):
+  - fitz (PyMuPDF): INSTALLED
+  - docx (python-docx): INSTALLED
+  - openpyxl: INSTALLED
+  - pptx (python-pptx): INSTALLED
+  - pytesseract: INSTALLED
+- Whether extracted text is sent to the LLM:
+  AssignmentController._solve_with_gemini() sends up to 3000 chars of
+  raw_text_preview, but currently fails because google-generativeai is not
+  installed and GEMINI_API_KEY is not set.
+- Whether large documents are chunked:
+  NO. Only raw_text_preview[:3000] is passed.
+- Whether scanned PDFs are supported:
+  DocumentReader detects scanned PDFs (status="scanned"), but OCR extraction
+  via pytesseract is not yet wired in.
+
+F. VOICE SYSTEM
+--------------------------------------------------------------------------------
+- Speech recognition library:  SpeechRecognition (INSTALLED in .venv)
+- Text-to-speech library:      pyttsx3 (INSTALLED), gTTS (INSTALLED in .venv)
+- Configured voice & rate:     pyttsx3 rate=160, volume=1.0; gTTS lang='bn',
+                               MediaPlayer Volume=1.0.
+- Whether audio responses can overlap:
+  TtsHelper uses _speak_lock (threading.Lock) and stop_speaking() to prevent
+  overlapping speech.
+
+G. RUNTIME DIAGNOSTICS (EXECUTED IN .venv)
+--------------------------------------------------------------------------------
+- Ollama running:              TRUE (http://localhost:11434/api/tags responded)
+- Available Ollama models:     ['qwen3:4b']
+- External Gemini API status:  NOT AVAILABLE
+  - GEMINI_API_KEY set:        False
+  - GOOGLE_API_KEY set:        False
+  - google-generativeai pkg:   MISSING (ModuleNotFoundError)
+
+H. FINAL REPORT
+--------------------------------------------------------------------------------
+Problem | Root Cause | Relevant File | Recommended Fix
+--------|------------|---------------|----------------
+1. Opens Google instead of finding local PDF/Word files | Unmatched phrasing falls through to Google Search branch | src/command_processor.py | Route document/file search intents to DocumentWorkflow before Google Search fallback
+2. Cannot find all relevant documents | Legacy search only checked limited folders; no index/ranking | src/document_intelligence/file_search.py, document_indexer.py | Complete Phase 3 (ranking) and Phase 9 (background indexer)
+3. Cannot read & analyze complete documents | Only 3000-char preview sent; no chunking; OCR not wired; Gemini missing | src/document_intelligence/document_reader.py, document_analyzer.py | Add OCR fallback for scanned PDFs and chunked analysis via Ollama/LLM
+4. Unclear voice output | gTTS was missing (fixed in .venv); SAPI5 English voice read Bengali | src/helpers/tts_helper.py | Keep gTTS + Volume=1.0; optionally add edge-tts for offline-like clarity
+5. Cannot answer general conversational questions | GeminiClient has no API key and google-generativeai is not installed | src/intelligence/gemini_client.py | Add local Ollama (qwen3:4b) provider/fallback in GeminiClient
+6. Cannot answer current date, weekday, or external knowledge | Date/time only handled by rigid keywords; no LLM or web-answer tool | src/command_processor.py, src/intelligence/decision_engine.py | Inject current date/weekday into LLM system prompt; add web search summary
+7. Not using local Ollama model (qwen3:4b) | Ollama is running with qwen3:4b, but code only targets Google Gemini | src/intelligence/gemini_client.py, assignment_controller.py | Add Ollama HTTP client (http://localhost:11434/api/chat) using qwen3:4b
+
+Summary Status:
+- Current LLM provider and model:  Google Gemini (unconfigured) | Local Ollama running with qwen3:4b (unused)
+- Current API status:              Gemini API unavailable (no key, no SDK); Ollama API healthy on localhost:11434
+- Current file search status:      Phase 1 FileSearchEngine implemented & tested; Phase 9 indexer pending
+- Current document reader status:  Phase 2 DocumentReader implemented & tested; OCR & chunking pending
+- Current voice status:            gTTS installed & Volume=1.0 set in TtsHelper
+
+Exact files that need modification (upon your approval):
+1. src/intelligence/gemini_client.py (add Ollama qwen3:4b support + fallback)
+2. src/document_intelligence/document_indexer.py (Phase 9)
+3. src/document_intelligence/document_analyzer.py (Phase 3 & 4)
+4. src/document_intelligence/assignment_solver.py (Phase 6)
+5. src/document_intelligence/document_workflow.py (Phase 5, 7, 8)
+6. src/command_processor.py & src/agent_service.py (wire DocumentWorkflow & general chat)
+
+Recommended implementation order:
+1. Add Ollama (qwen3:4b) support in src/intelligence/gemini_client.py
+2. Implement Phase 3 & 4 (document_analyzer.py)
+3. Implement Phase 6 (assignment_solver.py)
+4. Implement Phase 5, 7, 8 (document_workflow.py) & wire into CommandProcessor/AgentService
+5. Implement Phase 9 (document_indexer.py)
+================================================================================

@@ -56,13 +56,18 @@ class TtsHelper:
             ps_script = f"""
 Add-Type -AssemblyName presentationCore
 $player = New-Object System.Windows.Media.MediaPlayer
+$player.Volume = 1.0
 $player.Open([System.Uri]"{tmp_path.replace(chr(92), '/')}")
+$waitCount = 0
+while (-not $player.NaturalDuration.HasTimeSpan -and $waitCount -lt 30) {{
+    Start-Sleep -Milliseconds 100
+    $waitCount++
+}}
 $player.Play()
-Start-Sleep -Milliseconds 500
 while ($player.NaturalDuration.HasTimeSpan -and $player.Position -lt $player.NaturalDuration.TimeSpan) {{
     Start-Sleep -Milliseconds 150
 }}
-Start-Sleep -Milliseconds 300
+Start-Sleep -Milliseconds 400
 $player.Close()
 """
             enc = base64.b64encode(ps_script.encode("utf-16le")).decode("ascii")
@@ -73,7 +78,7 @@ $player.Close()
             )
             self._active_proc = proc
             try:
-                proc.wait(timeout=20)
+                proc.wait(timeout=45)
             except subprocess.TimeoutExpired:
                 proc.kill()
             finally:

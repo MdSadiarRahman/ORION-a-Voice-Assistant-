@@ -118,20 +118,20 @@ class CommandProcessor:
 
         # ২b. অ্যাসাইনমেন্ট সলভার এজেন্ট (Direct Assignment Routing)
         assignment_kws = [
-            "অ্যাসাইনমেন্ট", "assignment", "হোমওয়ার্ক", "homework", "প্রশ্নপত্র",
-            "সলভ করো", "solve", "সমাধান করো", "সমাধান দাও", "উত্তর দাও", "উত্তর বলো",
-            "answer", "প্রশ্নের উত্তর", "question solve", "question answer",
+            "অ্যাসাইনমেন্ট", "এসাইনমেন্ট", "assignment", "হোমওয়ার্ক", "homework", "প্রশ্নপত্র",
+            "সলভ", "solve", "সমাধান", "উত্তর", "answer", "প্রশ্নের উত্তর",
+            "question solve", "question answer", "পিডিএফ", "pdf",
             "পরীক্ষার প্রশ্ন", "পড়াশোনা", "পড়া", "study help"
         ]
         assignment_action_kws = [
-            "সলভ", "solve", "সমাধান", "উত্তর", "answer", "করো", "দাও",
+            "সলভ", "solve", "সমাধান", "উত্তর", "answer", "করো", "করে", "দাও",
             "বলো", "help", "লিখো", "write", "বানাও", "create", "তৈরি"
         ]
         has_assignment_kw = any(kw in cmd for kw in assignment_kws)
         has_assignment_action = any(kw in cmd for kw in assignment_action_kws)
         if has_assignment_kw and has_assignment_action:
             task_clean = cmd
-            for kw in ["অ্যাসাইনমেন্ট", "assignment", "হোমওয়ার্ক", "homework"]:
+            for kw in ["অ্যাসাইনমেন্ট", "এসাইনমেন্ট", "assignment", "হোমওয়ার্ক", "homework"]:
                 task_clean = task_clean.replace(kw, "")
             task_clean = task_clean.strip()
             if not task_clean:
