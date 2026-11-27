@@ -68,9 +68,17 @@ class VoiceMateBridge:
         """Process a text command through the agent."""
         if not text or not text.strip():
             return {"status": "error", "message": "Empty command"}
+
+        def process_command():
+            try:
+                self._agent.process_results(text.strip())
+            except Exception as exc:
+                message = f"কমান্ড চালাতে সমস্যা হয়েছে: {exc}"
+                print(f"[Bridge] command processing failed: {exc}", flush=True)
+                self._agent._notify_state(message)
+
         threading.Thread(
-            target=self._agent.process_results,
-            args=(text.strip(),),
+            target=process_command,
             daemon=True
         ).start()
         return {"status": "ok"}

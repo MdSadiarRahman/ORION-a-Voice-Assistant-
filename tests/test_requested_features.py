@@ -14,6 +14,7 @@ from src.product_agent.product_price_search import ProductPriceSearch
 from src.agent_service import AgentService
 from src.helpers.desktop_automation_helper import DesktopAutomationHelper
 from src.helpers.app_helper import AppHelper
+from src.helpers.search_helper import SearchHelper
 from src.ui.web_window import VoiceMateBridge
 
 
@@ -55,10 +56,26 @@ class TestRequestedFeatureRouter(unittest.TestCase):
 
         self.assertIn("খুঁজে পাওয়া যায়নি", response)
 
+    def test_gmail_open_failure_is_not_reported_as_success(self):
+        with patch.object(AppHelper, "get_all_installed_apps", return_value=[]), \
+             patch("src.helpers.app_helper.AppPreferenceHelper.is_app_allowed", return_value=True), \
+             patch("webbrowser.open", return_value=False):
+            response = AppHelper.open_app("Gmail")
+
+        self.assertNotIn("ওপেন করা হচ্ছে", response)
+
     def test_rejects_features_outside_the_requested_scope(self):
         response = RequestedFeatureRouter.process("play music")
 
         self.assertEqual(response, RequestedFeatureRouter.OUT_OF_SCOPE_MESSAGE)
+
+    def test_search_does_not_claim_success_when_browser_refuses_to_open(self):
+        with patch("src.helpers.search_helper.webbrowser.open", return_value=False):
+            google_result = SearchHelper.search_in_google("python")
+            youtube_result = SearchHelper.search_in_youtube("python")
+
+        self.assertIn("খুলতে পারেনি", google_result)
+        self.assertIn("খুলতে পারেনি", youtube_result)
 
 
 class TestVoiceTypingScope(unittest.TestCase):
@@ -109,6 +126,17 @@ class TestVoiceTypingScope(unittest.TestCase):
 
         service.decision_engine.process_query.assert_not_called()
 
+    def test_command_response_is_visible_in_the_ui(self):
+        service = self._service(typing_mode=False)
+        service._notify_state = Mock()
+        response = "গুগলে python সার্চ করা হচ্ছে"
+        with patch("src.agent_service.CommandProcessor.process_command", return_value=response):
+            service.process_results("search python")
+
+        service._notify_state.assert_any_call(response)
+        self.assertEqual(service._notify_state.call_count, 2)
+        service.speak.assert_called_once_with(response, start_listening_after=True)
+
 
 class TestVoiceMateBridgeScope(unittest.TestCase):
     def test_bridge_rejects_removed_toolkit_actions(self):
@@ -128,6 +156,17 @@ class TestVoiceMateBridgeScope(unittest.TestCase):
 
         self.assertEqual(result["status"], "ok")
         bridge.send_command.assert_called_once_with("price of HP laptop")
+
+    def test_bridge_reports_command_processing_errors(self):
+        agent = Mock()
+        agent.process_results.side_effect = RuntimeError("test failure")
+        bridge = VoiceMateBridge(agent=agent)
+        with patch("src.ui.web_window.threading.Thread") as thread:
+            result = bridge.send_command("open chrome")
+            thread.call_args.kwargs["target"]()
+
+        self.assertEqual(result, {"status": "ok"})
+        agent._notify_state.assert_called_once_with("কমান্ড চালাতে সমস্যা হয়েছে: test failure")
 
 
 class TestProductPriceSearch(unittest.TestCase):

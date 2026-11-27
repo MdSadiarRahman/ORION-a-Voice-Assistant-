@@ -398,6 +398,7 @@ class AgentService:
             return
 
         if response != "UNKNOWN_COMMAND":
+            self._notify_state(response)
             self.speak(response, start_listening_after=True)
             return
         else:

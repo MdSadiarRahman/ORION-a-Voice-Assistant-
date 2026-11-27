@@ -539,13 +539,25 @@ function toggleAutoScroll() {
 
 // ── pywebview API Safe Call ──────────────────────────────────────────
 async function safeApi(method, ...args) {
-  if (!window.pywebview || !window.pywebview.api) {
-    if (method === 'get_telemetry') {
-      return { is_running: false };
-    }
-    return { status: 'mock' };
+  let api = window.pywebview && window.pywebview.api;
+  if (!api) {
+    await new Promise((resolve, reject) => {
+      const onReady = () => {
+        clearTimeout(timer);
+        resolve();
+      };
+      const timer = setTimeout(() => {
+        window.removeEventListener('pywebviewready', onReady);
+        reject(new Error('VoiceMate backend is not connected. Launch the desktop app to run commands.'));
+      }, 3000);
+      window.addEventListener('pywebviewready', onReady, { once: true });
+    });
+    api = window.pywebview && window.pywebview.api;
   }
-  return await window.pywebview.api[method](...args);
+  if (!api || typeof api[method] !== 'function') {
+    throw new Error(`VoiceMate backend does not provide "${method}".`);
+  }
+  return await api[method](...args);
 }
 
 // ═════════════════════════════════════════════════════════════════════

@@ -17,7 +17,8 @@ class SearchHelper:
         try:
             encoded_query = urllib.parse.quote_plus(query.strip())
             url = f"https://www.google.com/search?q={encoded_query}"
-            webbrowser.open(url)
+            if not webbrowser.open(url):
+                return "ডিফল্ট ব্রাউজার Google সার্চ খুলতে পারেনি"
             return f"গুগলে {query} সার্চ করা হচ্ছে"
         except Exception:
             return "গুগল সার্চ করতে ব্যর্থ হয়েছে"
@@ -28,7 +29,8 @@ class SearchHelper:
         try:
             encoded_query = urllib.parse.quote_plus(query.strip())
             url = f"https://www.youtube.com/results?search_query={encoded_query}"
-            webbrowser.open(url)
+            if not webbrowser.open(url):
+                return "ডিফল্ট ব্রাউজার YouTube সার্চ খুলতে পারেনি"
             return f"ইউটিউবে {query} সার্চ করা হচ্ছে"
         except Exception:
             return "ইউটিউব সার্চ করতে ব্যর্থ হয়েছে"
@@ -119,7 +121,8 @@ class SearchHelper:
             target_url = url.strip()
             if not (target_url.startswith("http://") or target_url.startswith("https://")):
                 target_url = f"https://{target_url}"
-            webbrowser.open(target_url)
+            if not webbrowser.open(target_url):
+                return "ডিফল্ট ব্রাউজার ওয়েবসাইটটি খুলতে পারেনি"
             return "ওয়েবসাইট ওপেন করা হচ্ছে"
         except Exception:
             return "ওয়েবসাইট ওপেন করতে ব্যর্থ হয়েছে"
