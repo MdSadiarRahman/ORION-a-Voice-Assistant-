@@ -41,7 +41,7 @@ class HybridDecisionEngine:
     """
     def __init__(self, ollama_host: str = "http://localhost:11434", ollama_model: str = "qwen3:4b", provider: Optional[str] = None):
         import os
-        self.provider = (provider or os.getenv("VOICEMATE_LLM_PROVIDER", "auto")).strip().lower()
+        self.provider = (provider or os.getenv("VOICEMATE_LLM_PROVIDER", "ollama")).strip().lower()
         self.gemini = GeminiClient()
         self.ollama = OllamaClient(host=ollama_host, model=ollama_model)
         self.context = ContextManager()
@@ -62,11 +62,7 @@ class HybridDecisionEngine:
         # STEP 0: Zero-Cost Python Rules (IntentRouter + ToolRegistry)
         # -------------------------------------------------------------
         routed = self.intent_router.route(raw_text)
-        if (
-            routed.confidence >= 0.85
-            and routed.intent != "OPEN_APPLICATION"
-            and self.tool_registry.has_tool(routed.intent)
-        ):
+        if routed.confidence >= 0.85 and self.tool_registry.has_tool(routed.intent):
             tool_res = self.tool_registry.execute(routed.intent, **routed.parameters)
             if tool_res.get("ok"):
                 reply = tool_res.get("reply", "")
@@ -87,46 +83,28 @@ class HybridDecisionEngine:
         intent_res: Optional[IntentResult] = None
 
         # -------------------------------------------------------------
-        # STEP 1b: Autonomous Workflow Check (Assignment Solving & Deep Research)
+        # STEP 1b: Autonomous Multi-Step Task Planner Check
+        # Detects complex goals (Assignment solving, Website creation, Deep Research)
         # -------------------------------------------------------------
         lower_q = raw_text.lower()
-        is_assignment_goal = (
-            any(w in lower_q for w in ["assignment", "অ্যাসাইনমেন্ট"])
-            and any(w in lower_q for w in ["সলভ", "solve", "সমাধান", "docx", "pdf", "করো"])
+        is_autonomous_goal = (
+            (any(w in lower_q for w in ["assignment", "অ্যাসাইনমেন্ট"]) and any(w in lower_q for w in ["সলভ", "solve", "সমাধান", "docx", "pdf", "করো"])) or
+            (any(w in lower_q for w in ["website", "ওয়েবসাইট"]) and any(w in lower_q for w in ["বানিয়ে", "তৈরি", "build", "create", "make", "দাও", "করো"])) or
+            (any(w in lower_q for w in ["রিসার্চ রিপোর্ট", "গবেষণামূলক রিপোর্ট", "deep research", "research report"]))
         )
-        is_research_goal = any(
-            w in lower_q for w in ["রিসার্চ রিপোর্ট", "গবেষণামূলক রিপোর্ট", "deep research", "research report"]
-        )
-        if is_assignment_goal and not followup_data:
-            from src.assignment_agent.assignment_controller import AssignmentController
-            res = AssignmentController.execute_assignment_workflow(raw_text)
+        if is_autonomous_goal and not followup_data:
+            from src.agent_brain.task_planner import TaskPlanner
+            plan = TaskPlanner.create_plan(raw_text)
+            executed_plan = TaskPlanner.execute_plan(plan)
             intent_res = IntentResult(
                 intent=Intent.SUBSYSTEM_TASK,
-                action="assignment_workflow",
+                action="autonomous_plan",
                 confidence=0.99,
-                parameters={"assignment_result": res},
+                parameters={"plan": executed_plan.to_dict()},
                 raw_query=raw_text,
-                source="assignment_agent",
+                source="task_planner"
             )
-            response_msg = res.get("voice_summary") or "অ্যাসাইনমেন্ট সমাধান সম্পন্ন হয়েছে।"
-            self.context.record_turn("user", raw_text)
-            self.context.record_turn("assistant", response_msg)
-            return intent_res, response_msg
-
-        if is_research_goal and not followup_data:
-            from src.helpers.web_research_helper import WebResearchHelper
-            res = WebResearchHelper.conduct_academic_research(raw_text)
-            ans = WebResearchHelper.search_and_answer(raw_text)
-            summary = res.get("voice_summary", "")
-            response_msg = f"{summary}\n{ans}".strip() if ans else summary
-            intent_res = IntentResult(
-                intent=Intent.SUBSYSTEM_TASK,
-                action="deep_research",
-                confidence=0.98,
-                parameters={"research_result": res},
-                raw_query=raw_text,
-                source="web_research",
-            )
+            response_msg = executed_plan.final_summary
             self.context.record_turn("user", raw_text)
             self.context.record_turn("assistant", response_msg)
             return intent_res, response_msg
@@ -156,67 +134,61 @@ class HybridDecisionEngine:
             intent_res = FastCommandRouter.match(raw_text)
 
         # -------------------------------------------------------------
-        # STEP 3: Hybrid LLM Routing (Auto: Local Ollama <-> Cloud Gemini)
+        # STEP 3a: Cloud AI Mode via Google Gemini API (only when provider == "gemini")
         # -------------------------------------------------------------
-        def _parse_llm_output(llm_output: Optional[Dict[str, Any]], source_name: str, conf: float) -> Optional[IntentResult]:
-            if not llm_output or not isinstance(llm_output, dict):
-                return None
-            intent_str = llm_output.get("intent", "unknown")
-            action_str = llm_output.get("action", "none")
-            parameters = llm_output.get("parameters") or {}
-            if not isinstance(parameters, dict):
-                parameters = {}
-            ai_reply = llm_output.get("reply") or parameters.get("reply") or ""
-
-            try:
-                intent_enum = Intent(intent_str)
-            except Exception:
-                intent_enum = Intent.UNKNOWN
-
-            res = IntentResult(
-                intent=intent_enum,
-                action=action_str,
-                confidence=conf,
-                parameters=parameters,
-                raw_query=raw_text,
-                source=source_name,
-            )
-            if ai_reply:
-                res.parameters["ai_reply"] = ai_reply
-            return res
-
-        if not intent_res:
-            # Determine order: "gemini" prefers Gemini; "ollama" tries Ollama first; "auto" picks available local/cloud
-            try_ollama_first = self.provider == "ollama" or (self.provider == "auto" and self.ollama.is_available())
-            if try_ollama_first:
-                if self.ollama.is_available():
-                    intent_res = _parse_llm_output(
-                        self.ollama.analyze_query(raw_text, self.context.history),
-                        "ollama_qwen",
-                        0.88,
-                    )
-                if not intent_res and self.gemini.is_available():
-                    intent_res = _parse_llm_output(
-                        self.gemini.analyze_query(raw_text, self.context.history),
-                        "gemini_cloud",
-                        0.96,
-                    )
+        if not intent_res and self.provider == "gemini":
+            if not self.gemini.is_available():
+                print("[LLM ERROR] Provider 'gemini' selected, but GEMINI_API_KEY or google-generativeai is unavailable.")
             else:
-                # Prefer Gemini Cloud ("gemini" or "auto" when Ollama has no pulled models)
-                if self.gemini.is_available():
-                    intent_res = _parse_llm_output(
-                        self.gemini.analyze_query(raw_text, self.context.history),
-                        "gemini_cloud",
-                        0.96,
-                    )
-                elif self.provider == "gemini":
-                    print("[LLM ERROR] Provider 'gemini' selected, but GEMINI_API_KEY is unavailable.")
-                if not intent_res and self.ollama.is_available():
-                    intent_res = _parse_llm_output(
-                        self.ollama.analyze_query(raw_text, self.context.history),
-                        "ollama_qwen",
-                        0.88,
-                    )
+                gemini_output = self.gemini.analyze_query(raw_text, self.context.history)
+            if gemini_output:
+                intent_str = gemini_output.get("intent", "unknown")
+                action_str = gemini_output.get("action", "none")
+                parameters = gemini_output.get("parameters", {})
+                ai_reply = gemini_output.get("reply", "")
+
+                try:
+                    intent_enum = Intent(intent_str)
+                except Exception:
+                    intent_enum = Intent.UNKNOWN
+
+                intent_res = IntentResult(
+                    intent=intent_enum,
+                    action=action_str,
+                    confidence=0.96,
+                    parameters=parameters,
+                    raw_query=raw_text,
+                    source="gemini_cloud"
+                )
+                if ai_reply:
+                    intent_res.parameters["ai_reply"] = ai_reply
+
+        # -------------------------------------------------------------
+        # STEP 3b: Local AI Mode via Ollama Qwen3:4b (Offline Local Brain)
+        # -------------------------------------------------------------
+        if not intent_res and self.ollama.is_available():
+            ollama_output = self.ollama.analyze_query(raw_text, self.context.history)
+            if ollama_output:
+                intent_str = ollama_output.get("intent", "unknown")
+                action_str = ollama_output.get("action", "none")
+                parameters = ollama_output.get("parameters", {})
+                ai_reply = ollama_output.get("reply", "")
+
+                try:
+                    intent_enum = Intent(intent_str)
+                except Exception:
+                    intent_enum = Intent.UNKNOWN
+
+                intent_res = IntentResult(
+                    intent=intent_enum,
+                    action=action_str,
+                    confidence=0.88,
+                    parameters=parameters,
+                    raw_query=raw_text,
+                    source="ollama_qwen"
+                )
+                if ai_reply:
+                    intent_res.parameters["ai_reply"] = ai_reply
 
         # -------------------------------------------------------------
         # STEP 4: Smart Semantic Fallback (Works even when Ollama is Offline)
@@ -270,15 +242,7 @@ class HybridDecisionEngine:
         if intent == Intent.PLAY_MUSIC:
             song = params.get("song_name") or "bangla top song"
             success, title, msg, watch_url = MediaController.play_youtube(song)
-            if not success:
-                return msg or "ইউটিউবে গানটি চালু করা যায়নি।"
-            verified, verify_msg = ActionVerifier.verify_youtube_playback(
-                watch_url,
-                title,
-                playback_verified=True,
-            )
-            if not verified:
-                return verify_msg
+            verified, verify_msg = ActionVerifier.verify_youtube_playback(watch_url, title)
             self.context.set_media_state(title, is_playing=verified)
             return verify_msg
 
@@ -489,13 +453,23 @@ class HybridDecisionEngine:
         if intent == Intent.CANCEL_ACTION:
             return "কমান্ডটি বাতিল করা হয়েছে।"
 
-        # 14. SUBSYSTEM TASKS (Delegated to Document Intelligence engines)
+        # 14. SUBSYSTEM TASKS (Delegated to external engines)
         if intent == Intent.SUBSYSTEM_TASK:
             query = params.get("query", "")
             if action == "docling":
                 return f"ACTION_DOCLING_TASK|{query}"
             elif action == "document":
                 return f"ACTION_DOCUMENT_TASK|{query}"
+            elif action == "coder":
+                return f"ACTION_CODER_TASK|{query}"
+            elif action == "canvas":
+                return f"ACTION_CANVAS_TASK|{query}"
+            elif action == "n8n":
+                return f"ACTION_N8N_TASK|{query}"
+            elif action == "api_gateway":
+                return f"ACTION_API_GATEWAY_TASK|{query}"
+            elif action == "brain":
+                return f"ACTION_BRAIN_TASK|{query}"
 
         # 15. GENERAL CONVERSATION OR AI REPLY
         if "ai_reply" in params and params["ai_reply"]:
@@ -528,7 +502,7 @@ class HybridDecisionEngine:
                 intent=Intent.UNKNOWN,
                 action="capability_reply",
                 confidence=0.95,
-                parameters={"ai_reply": "আমি ইউটিউবে গান চালানো, অ্যাসাইনমেন্ট সমাধান, ডকুমেন্ট ও PDF পড়া, পিসির ফাইল খুঁজে দেওয়া, আবহাওয়া জানানো, অ্যাপ চালু ও ইন্টারনেট রিসার্চ করতে পারি। আপনি আমাকে যেকোনো স্বাভাবিক ভাষায় নির্দেশ দিতে পারেন।"},
+                parameters={"ai_reply": "আমি ইউটিউবে গান চালানো, পণ্যের বাজারদর তুলনা, অ্যাসাইনমেন্ট সমাধান, সম্পূর্ণ ওয়েবসাইট তৈরি, অ্যাপ চালু ও ইন্টারনেটে গবেষণা করতে পারি। আপনি আমাকে যেকোনো স্বাভাবিক ভাষায় নির্দেশ দিতে পারেন।"},
                 raw_query=text,
                 source="semantic_fallback"
             )

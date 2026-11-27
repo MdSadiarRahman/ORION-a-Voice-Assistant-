@@ -2,13 +2,12 @@
 VoiceMate Intelligence - Ollama Qwen Local LLM Integration Client.
 Provides lightweight, local AI decision-making, semantic parameter extraction,
 and conversational reasoning via Ollama Qwen3:4b (with adaptive model fallback).
-Verifies that at least one model is actually installed before reporting available.
+Optimized for 8GB RAM systems with low context budgeting and fast timeouts.
 """
 import json
 import time
-import urllib.error
 import urllib.request
-from datetime import datetime
+import urllib.error
 from typing import Optional, Dict, Any, List
 
 
@@ -35,7 +34,7 @@ Allowed intents:
 - "close_application": User wants to close active window/app.
 - "search_web": General search query. parameter: "query"
 - "system_info": User asks for time, date, or battery. parameter: "info_type" ("time", "date", "battery")
-- "conversation": General chit-chat or question. parameter: "reply" (polite concise response in Bengali when appropriate)
+- "conversation": General chit-chat or question. parameter: "reply"
 - "unknown": Unclear request.
 
 Respond ONLY with valid JSON. No markdown, no prose.
@@ -52,20 +51,10 @@ Schema:
         self.host = host.rstrip("/")
         self.preferred_model = model
         self.timeout = timeout_seconds
-        self._cached_available = None
-        self._last_check_time = 0.0
-        self._active_model = None
-
-    @classmethod
-    def _build_system_prompt(cls) -> str:
-        now = datetime.now()
-        dt_ctx = now.strftime("Current local date/time: %A, %d %B %Y %I:%M %p.")
-        return f"{cls.SYSTEM_PROMPT}\n\nContext: {dt_ctx}"
 
     def is_available(self) -> bool:
         """
-        Fast health-check with 15-second TTL cache.
-        Returns True ONLY if Ollama server is reachable AND has at least one model pulled.
+        Fast health-check with 15-second TTL cache to prevent stalling voice loops when Ollama is offline.
         """
         now = time.time()
         if self._cached_available is not None and (now - self._last_check_time < 15.0):
@@ -75,13 +64,12 @@ Schema:
             req = urllib.request.Request(f"{self.host}/api/tags", headers={"User-Agent": "VoiceMate/2.0"})
             with urllib.request.urlopen(req, timeout=1.5) as resp:
                 if resp.status == 200:
-                    data = json.loads(resp.read().decode("utf-8"))
-                    models = [m.get("name", "") for m in data.get("models", []) if m.get("name")]
-                    if models:
-                        self._resolve_model(models)
-                        self._cached_available = True
-                        self._last_check_time = now
-                        return True
+                    data = json.loads(resp.read().decode('utf-8'))
+                    models = [m.get("name", "") for m in data.get("models", [])]
+                    self._resolve_model(models)
+                    self._cached_available = True
+                    self._last_check_time = now
+                    return True
         except Exception:
             pass
 
@@ -90,7 +78,7 @@ Schema:
         return False
 
     def _resolve_model(self, available_models: List[str]):
-        """Picks the best available Qwen/Llama model from the running Ollama server."""
+        """Picks the best available Qwen model from the running Ollama server."""
         for pref in self.PREFERRED_MODELS:
             for avail in available_models:
                 if avail.startswith(pref) or pref in avail:
@@ -104,16 +92,17 @@ Schema:
     def analyze_query(self, user_text: str, context_history: Optional[List[Dict[str, str]]] = None) -> Optional[Dict[str, Any]]:
         """
         Submits natural language query to Ollama and returns structured intent dict.
-        Returns None if Ollama is unreachable, has no models, times out, or output is non-JSON.
+        Returns None if Ollama is unreachable, times out, or output is non-JSON.
         """
         if not self.is_available():
             return None
 
         model_name = self._active_model or self.preferred_model
 
-        messages = [{"role": "system", "content": self._build_system_prompt()}]
+        # Build messages payload
+        messages = [{"role": "system", "content": self.SYSTEM_PROMPT}]
         if context_history:
-            for turn in context_history[-4:]:
+            for turn in context_history[-4:]:  # Keep recent 4 turns for context
                 messages.append(turn)
         messages.append({"role": "user", "content": user_text})
 
@@ -126,20 +115,20 @@ Schema:
             "options": {
                 "temperature": 0.1,
                 "num_ctx": 2048,
-                "num_predict": 512,
-            },
+                "num_predict": 512
+            }
         }
 
         try:
-            data_bytes = json.dumps(payload).encode("utf-8")
+            data_bytes = json.dumps(payload).encode('utf-8')
             req = urllib.request.Request(
                 f"{self.host}/api/chat",
                 data=data_bytes,
-                headers={"Content-Type": "application/json", "User-Agent": "VoiceMate/2.0"},
+                headers={"Content-Type": "application/json", "User-Agent": "VoiceMate/2.0"}
             )
             with urllib.request.urlopen(req, timeout=self.timeout) as resp:
                 if resp.status == 200:
-                    raw_resp = json.loads(resp.read().decode("utf-8"))
+                    raw_resp = json.loads(resp.read().decode('utf-8'))
                     content = raw_resp.get("message", {}).get("content", "").strip()
                     parsed = json.loads(content)
                     return parsed
@@ -147,47 +136,3 @@ Schema:
             pass
 
         return None
-
-    def answer_from_context(self, question: str, evidence: str) -> Optional[str]:
-        """Answers using only locally supplied document passages."""
-        if not self.is_available():
-            return None
-
-        model_name = self._active_model or self.preferred_model
-        payload = {
-            "model": model_name,
-            "messages": [
-                {
-                    "role": "system",
-                    "content": (
-                        "Use the supplied document passages as evidence. If they contain a "
-                        "question or exercise but no explicit answer, solve it and clearly label "
-                        "the response as a solution derived from the document. Do not present "
-                        "unsupported details as document facts; say when evidence is insufficient. "
-                        "Reply in the user's language and cite the source labels."
-                    ),
-                },
-                {
-                    "role": "user",
-                    "content": f"Question:\n{question}\n\nDocument passages:\n{evidence}",
-                },
-            ],
-            "stream": False,
-            "think": False,
-            "options": {"temperature": 0.1, "num_ctx": 4096, "num_predict": 500},
-        }
-
-        try:
-            request = urllib.request.Request(
-                f"{self.host}/api/chat",
-                data=json.dumps(payload).encode("utf-8"),
-                headers={"Content-Type": "application/json", "User-Agent": "VoiceMate/2.0"},
-            )
-            with urllib.request.urlopen(request, timeout=self.timeout) as response:
-                if response.status != 200:
-                    return None
-                result = json.loads(response.read().decode("utf-8"))
-            answer = result.get("message", {}).get("content", "").strip()
-            return answer or None
-        except (urllib.error.URLError, TimeoutError, OSError, json.JSONDecodeError, KeyError, TypeError):
-            return None

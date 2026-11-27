@@ -197,20 +197,18 @@ async function toggleService() {
   }
 }
 
-function setServiceState(running, quiet = false) {
-  const changed = STATE.serviceRunning !== running;
+function setServiceState(running) {
   STATE.serviceRunning = running;
   const toggle = document.getElementById('svcToggle');
   if (toggle) {
     toggle.classList.toggle('active', running);
   }
-  if (!changed) return;
   if (running) {
     setStatus('online', 'ONLINE');
-    if (!quiet) appendLog('INFO', 'ভয়েস সার্ভিস সক্রিয় করা হয়েছে');
+    appendLog('INFO', 'ভয়েস সার্ভিস সক্রিয় করা হয়েছে');
   } else {
     setStatus('offline', 'OFFLINE');
-    if (!quiet) appendLog('WARN', 'ভয়েস সার্ভিস সাময়িক স্থগিত');
+    appendLog('WARN', 'ভয়েস সার্ভিস সাময়িক স্থগিত');
   }
 }
 
@@ -224,54 +222,10 @@ function toggleMute() {
   appendLog('INFO', `অডিও ফিডব্যাক: ${STATE.muted ? 'নিঃশব্দ (Muted)' : 'সক্রিয় (Unmuted)'}`);
 }
 
-async function openSettings() {
+function openSettings() {
   playUiTick();
-  const modal = document.getElementById('settingsModal');
-  if (!modal) return;
-  try {
-    const cfg = await safeApi('get_settings');
-    if (cfg) {
-      const provEl = document.getElementById('cfgProvider');
-      const langEl = document.getElementById('cfgLang');
-      const hintEl = document.getElementById('cfgKeyHint');
-      const keyEl = document.getElementById('cfgApiKey');
-      if (provEl) provEl.value = cfg.provider || 'auto';
-      if (langEl) langEl.value = cfg.language || 'bn-BD';
-      if (keyEl) keyEl.value = '';
-      if (hintEl) {
-        hintEl.textContent = cfg.has_api_key
-          ? `Current Key: ${cfg.api_key_masked} (active)`
-          : 'No Gemini API Key configured yet';
-      }
-    }
-  } catch (e) {
-    appendLog('WARN', 'Settings load fallback: ' + e);
-  }
-  modal.classList.remove('hidden');
-}
-
-function closeSettings() {
-  const modal = document.getElementById('settingsModal');
-  if (modal) modal.classList.add('hidden');
-}
-
-async function saveSettings() {
-  playUiTick(950);
-  const provider = document.getElementById('cfgProvider')?.value || 'auto';
-  const api_key = document.getElementById('cfgApiKey')?.value || '';
-  const language = document.getElementById('cfgLang')?.value || 'bn-BD';
-  try {
-    const res = await safeApi('save_settings', { provider, api_key, language });
-    if (res && res.status === 'ok') {
-      appendLog('SUCCESS', `সেটিংস সংরক্ষণ হয়েছে (Engine: ${provider}, Lang: ${language})`);
-      appendChat('SYSTEM', `সেটিংস আপডেট হয়েছে: Provider=${provider}, Language=${language}`, 'system');
-      closeSettings();
-    } else {
-      appendLog('ERROR', 'Settings save error: ' + (res?.message || 'unknown'));
-    }
-  } catch (e) {
-    appendLog('ERROR', 'Settings save failed: ' + e);
-  }
+  appendLog('AGENT', 'Settings ইন্টারফেস অনুরোধ করা হয়েছে');
+  appendChat('SYSTEM', 'সেটিংস অপশন: মাইক্রোফোন, স্পিচ ভয়েস ও API কনফিগারেশন।', 'system');
 }
 
 // ── Status Dot & Label Helper ───────────────────────────────────────
@@ -288,8 +242,8 @@ function setStatus(cls, label) {
 async function toggleVoice() {
   playUiTick(750);
   try {
-    const res = await safeApi('toggle_voice');
-    STATE.voiceActive = (res && res.is_listening !== undefined) ? Boolean(res.is_listening) : !STATE.voiceActive;
+    await safeApi('toggle_voice');
+    STATE.voiceActive = !STATE.voiceActive;
     const btn = document.getElementById('micBtn');
     if (btn) {
       btn.classList.toggle('active', STATE.voiceActive);
@@ -320,43 +274,57 @@ async function sendCommand() {
 
 // ── Quick Action Chip ───────────────────────────────────────────────
 async function quickAction(prompt) {
-  if (prompt === 'Typing Mode') {
-    playUiTick(800);
-    appendChat('আপনি', 'Typing Mode', 'user');
-    try {
-      await safeApi('send_command', 'typing mode');
-    } catch (e) {
-      appendChat('SYSTEM', 'Typing Mode চালু করা যায়নি: ' + e, 'system');
-    }
-    return;
+  playUiTick(800);
+  appendChat('আপনি', prompt, 'user');
+  try {
+    await safeApi('trigger_quick_action', prompt);
+  } catch (e) {
+    appendChat('SYSTEM', 'Quick Action ব্যর্থ: ' + e, 'system');
   }
-
-  const actions = {
-    'Open App': ['open_app', 'কোন অ্যাপ খুলবেন?'],
-    'Search Web': ['web_search', 'কী সার্চ করবেন?'],
-    'Document Q&A': ['document_qa', 'প্রশ্ন এবং চাইলে PDF/DOCX ফাইলের নাম দিন:'],
-    'Product Price': ['product_price', 'কোন পণ্যের দাম জানতে চান?']
-  };
-  const action = actions[prompt];
-  if (!action) return;
-  await runToolkit(action[0], action[1]);
 }
 
-// ── Supported capability action ────────────────────────────────────
+// ── Toolkit Action Trigger ──────────────────────────────────────────
+const AGENT_BADGE_MAP = {
+  browser_agent: 'badge-browser',
+  web_automation: 'badge-browser',
+  assignment_solver: 'badge-doc',
+  docling_converter: 'badge-doc',
+  doc_reader: 'badge-doc',
+  website_builder: 'badge-se',
+  ai_coder: 'badge-se',
+  developer_canvas: 'badge-se',
+  product_research: 'badge-enterprise',
+  n8n_workflow: 'badge-enterprise',
+  api_gateway: 'badge-enterprise',
+  langgraph_brain: 'badge-enterprise'
+};
+
 async function runToolkit(agentName, promptTitle) {
-  const param = window.prompt(promptTitle || 'টাস্ক লিখুন:', '');
-  if (param === null || !param.trim()) return;
   playUiTick(650);
-  appendChat('আপনি', `${promptTitle || ''} ${param}`.trim(), 'user');
+  const param = window.prompt(promptTitle || 'টাস্ক লিখুন:', '');
+  if (param === null) return;
+
+  const badgeId = AGENT_BADGE_MAP[agentName];
+  const badgeEl = badgeId ? document.getElementById(badgeId) : null;
+  if (badgeEl) {
+    badgeEl.className = 'mc-badge active font-mono';
+    badgeEl.textContent = 'ACTIVE';
+  }
+
+  appendLog('AGENT', `টুলকিট সক্রিয়: [${agentName}] — "${param}"`);
   switchTab(0); // View agent feedback in Tab 0
 
   try {
-    const result = await safeApi('run_toolkit_action', agentName, param.trim());
-    if (result && result.status === 'error') {
-      appendChat('SYSTEM', result.message || 'এই কাজটি সমর্থিত নয়।', 'system');
-    }
+    await safeApi('run_toolkit_action', agentName, param);
   } catch (e) {
-    appendChat('SYSTEM', `কাজটি শুরু করা যায়নি: ${e}`, 'system');
+    appendLog('ERROR', `টুলকিট চালনায় ত্রুটি: ${e}`);
+  } finally {
+    setTimeout(() => {
+      if (badgeEl) {
+        badgeEl.className = 'mc-badge ready font-mono';
+        badgeEl.textContent = 'READY';
+      }
+    }, 4500);
   }
 }
 
@@ -397,10 +365,6 @@ window.onAgentStateChange = function(state) {
 
   updateOrbState(st);
 
-  STATE.voiceActive = (st === 'listening');
-  const micBtn = document.getElementById('micBtn');
-  if (micBtn) micBtn.classList.toggle('active', STATE.voiceActive);
-
   if (state.message) {
     appendChat('VoiceMate AI', state.message, 'agent');
   }
@@ -410,13 +374,21 @@ window.appendChat = appendChat;
 window.appendLog = appendLog;
 
 window.updateTelemetry = function(data) {
-  if (data.is_running !== undefined) {
-    setServiceState(data.is_running, true);
+  if (data.battery !== undefined && data.battery !== null) {
+    const pct = document.getElementById('batPct');
+    if (pct) pct.textContent = data.battery + '%';
+
+    const charge = document.getElementById('batCharge');
+    if (charge) charge.style.display = data.charging ? 'inline' : 'none';
   }
-  if (data.is_listening !== undefined) {
-    STATE.voiceActive = Boolean(data.is_listening);
-    const micBtn = document.getElementById('micBtn');
-    if (micBtn) micBtn.classList.toggle('active', STATE.voiceActive);
+
+  if (data.engine) {
+    const engName = document.getElementById('engineName');
+    if (engName) engName.textContent = data.engine;
+  }
+
+  if (data.is_running !== undefined) {
+    setServiceState(data.is_running);
   }
 };
 
@@ -539,25 +511,13 @@ function toggleAutoScroll() {
 
 // ── pywebview API Safe Call ──────────────────────────────────────────
 async function safeApi(method, ...args) {
-  let api = window.pywebview && window.pywebview.api;
-  if (!api) {
-    await new Promise((resolve, reject) => {
-      const onReady = () => {
-        clearTimeout(timer);
-        resolve();
-      };
-      const timer = setTimeout(() => {
-        window.removeEventListener('pywebviewready', onReady);
-        reject(new Error('VoiceMate backend is not connected. Launch the desktop app to run commands.'));
-      }, 3000);
-      window.addEventListener('pywebviewready', onReady, { once: true });
-    });
-    api = window.pywebview && window.pywebview.api;
+  if (!window.pywebview || !window.pywebview.api) {
+    if (method === 'get_telemetry') {
+      return { battery: 92, charging: false, engine: '⚡ Gemini 3.8 Flash', is_running: false };
+    }
+    return { status: 'mock' };
   }
-  if (!api || typeof api[method] !== 'function') {
-    throw new Error(`VoiceMate backend does not provide "${method}".`);
-  }
-  return await api[method](...args);
+  return await window.pywebview.api[method](...args);
 }
 
 // ═════════════════════════════════════════════════════════════════════

@@ -21,8 +21,6 @@ class TtsHelper:
         self.is_speaking = False
         self._engine = None
         self._active_proc: Optional[subprocess.Popen] = None
-        self._mci_alias: Optional[str] = None
-        self._mci_stop_requested: bool = False
         self._speech_seq = 0
         self._init_engine()
 
@@ -44,46 +42,9 @@ class TtsHelper:
     def _is_bengali(text: str) -> bool:
         return any('\u0980' <= c <= '\u09FF' for c in text)
 
-    def _play_mp3_winmm(self, mp3_path: str) -> bool:
-        """
-        Zero-subprocess low-latency MP3 playback using Windows MCI (winmm.dll).
-        Supports instant interruption via stop_speaking().
-        """
-        try:
-            import ctypes
-            import time as _time
-            winmm = ctypes.windll.winmm
-            alias = f"vm_tts_{self._speech_seq}"
-            self._mci_alias = alias
-            winmm.mciSendStringW(f'open "{mp3_path}" type mpegvideo alias {alias}', None, 0, 0)
-            err = winmm.mciSendStringW(f"play {alias}", None, 0, 0)
-            if err != 0:
-                winmm.mciSendStringW(f"close {alias}", None, 0, 0)
-                self._mci_alias = None
-                return False
-
-            buf = ctypes.create_unicode_buffer(64)
-            start_t = _time.time()
-            while _time.time() - start_t < 45.0:
-                if self._mci_stop_requested:
-                    break
-                winmm.mciSendStringW(f"status {alias} mode", buf, 64, 0)
-                if buf.value.lower() not in ("playing", "seeking"):
-                    break
-                _time.sleep(0.08)
-
-            winmm.mciSendStringW(f"stop {alias}", None, 0, 0)
-            winmm.mciSendStringW(f"close {alias}", None, 0, 0)
-            self._mci_alias = None
-            return True
-        except Exception:
-            self._mci_alias = None
-            return False
-
     def _speak_bengali_gtts(self, text: str) -> bool:
         """
-        Synthesizes authentic Bengali speech using Google TTS and plays it via
-        fast Windows MCI (winmm.dll), falling back to PowerShell MediaPlayer.
+        Synthesizes authentic Bengali speech using Google TTS and plays it via Windows MediaPlayer.
         """
         try:
             from gtts import gTTS
@@ -91,14 +52,6 @@ class TtsHelper:
             tmp_fd, tmp_path = tempfile.mkstemp(suffix=".mp3")
             os.close(tmp_fd)
             tts.save(tmp_path)
-            self._mci_stop_requested = False
-
-            if self._play_mp3_winmm(tmp_path):
-                try:
-                    os.remove(tmp_path)
-                except Exception:
-                    pass
-                return True
 
             ps_script = f"""
 Add-Type -AssemblyName presentationCore
@@ -165,17 +118,7 @@ try {{
             return False
 
     def stop_speaking(self):
-        """Interrupts any currently playing TTS subprocess or MCI playback."""
-        self._mci_stop_requested = True
-        alias = self._mci_alias
-        if alias:
-            try:
-                import ctypes
-                ctypes.windll.winmm.mciSendStringW(f"stop {alias}", None, 0, 0)
-                ctypes.windll.winmm.mciSendStringW(f"close {alias}", None, 0, 0)
-            except Exception:
-                pass
-            self._mci_alias = None
+        """Interrupts any currently playing TTS subprocess."""
         proc = self._active_proc
         if proc is not None:
             try:

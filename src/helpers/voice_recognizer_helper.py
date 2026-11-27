@@ -172,11 +172,10 @@ class VoiceRecognizerHelper:
         """
         Starts listening continuously from the laptop's default microphone.
         """
-        if self.is_listening and self._listen_thread and self._listen_thread.is_alive():
+        if self.is_listening:
             return
 
         self._stop_requested = False
-        self.is_listening = True
         self._listen_thread = threading.Thread(target=self._listen_loop, daemon=True)
         self._listen_thread.start()
 

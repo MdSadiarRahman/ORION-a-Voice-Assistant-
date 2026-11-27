@@ -16,30 +16,16 @@ import os
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-PRODUCT_AGENT_AVAILABLE = True
-try:
-    from src.product_agent.product_models import ProductItem, PriceComparisonResult, ProductSearchFilter
-    from src.product_agent.product_scraper import ProductScraper
-    from src.product_agent.price_comparator import PriceComparator
-    from src.product_agent.product_controller import ProductController
-except ModuleNotFoundError as exc:
-    if exc.name in {"src.product_agent", "src.product_agent.product_models"}:
-        PRODUCT_AGENT_AVAILABLE = False
-        ProductItem = PriceComparisonResult = ProductSearchFilter = None
-        ProductScraper = PriceComparator = ProductController = None
-    else:
-        raise
-
+from src.product_agent.product_models import ProductItem, PriceComparisonResult, ProductSearchFilter
+from src.product_agent.product_scraper import ProductScraper
+from src.product_agent.price_comparator import PriceComparator
+from src.product_agent.product_controller import ProductController
 from src.intelligence.decision_engine import HybridDecisionEngine
 from src.intelligence.context_manager import ContextManager
 from src.intelligence.intent_engine import Intent, IntentEngine
 from src.intelligence.fast_router import FastCommandRouter
 
 
-@unittest.skipUnless(
-    PRODUCT_AGENT_AVAILABLE,
-    "The legacy product model is not used by the current retailer price-search service.",
-)
 class TestProductResearchAgent(unittest.TestCase):
     """
     Test suite for VoiceMate Intelligent Product Search & Price Research Agent.

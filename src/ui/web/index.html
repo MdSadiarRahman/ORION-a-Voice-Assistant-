@@ -138,6 +138,19 @@
 
   <!-- Right: Badges + Controls -->
   <div class="hud-right">
+    <!-- Engine badge -->
+    <div class="engine-badge" id="engineBadge">
+      <span id="engineIcon">⚡</span>
+      <span id="engineName" class="font-mono">Detecting...</span>
+    </div>
+
+    <!-- Battery pill -->
+    <div class="battery-pill" id="batteryPill">
+      <span class="bat-icon" id="batIcon">🔋</span>
+      <span class="bat-pct font-mono" id="batPct">--%</span>
+      <span class="bat-charge" id="batCharge" style="display:none">⚡</span>
+    </div>
+
     <!-- Voice service neon toggle -->
     <div class="neon-toggle-wrap">
       <span class="toggle-label font-mono">SVC</span>
@@ -173,7 +186,7 @@
     </button>
     <button class="pill-btn" id="pill-1" role="tab" aria-selected="false" onclick="switchTab(1)">
       <span class="pill-icon">🤖</span>
-      <span class="pill-label font-bengali">সক্ষমতাসমূহ</span>
+      <span class="pill-label font-bengali">এআই এজেন্ট টুলকিট</span>
     </button>
     <button class="pill-btn" id="pill-2" role="tab" aria-selected="false" onclick="switchTab(2)">
       <span class="pill-icon">📋</span>
@@ -202,13 +215,13 @@
       </div>
     </div>
 
-    <!-- Shortcuts for the supported VoiceMate capabilities -->
+    <!-- One-Click Quick Action Chips -->
     <div class="chip-row">
-      <button class="chip font-bengali" onclick="quickAction('Open App')">📂 Open App</button>
-      <button class="chip font-bengali" onclick="quickAction('Typing Mode')">⌨️ Typing Mode</button>
-      <button class="chip font-bengali" onclick="quickAction('Search Web')">🔎 Search Web</button>
-      <button class="chip font-bengali" onclick="quickAction('Document Q&amp;A')">📄 Document Q&amp;A</button>
-      <button class="chip font-bengali" onclick="quickAction('Product Price')">🏷️ Product Price</button>
+      <button class="chip font-bengali" onclick="quickAction('Solve Assignment')">📝 Solve Assignment</button>
+      <button class="chip font-bengali" onclick="quickAction('Compare Prices')">🏷️ Compare Prices</button>
+      <button class="chip font-bengali" onclick="quickAction('Build Website')">🌐 Build Website</button>
+      <button class="chip font-bengali" onclick="quickAction('Play Music')">🎵 Play Music</button>
+      <button class="chip font-bengali" onclick="quickAction('Battery Status')">🔋 Battery Status</button>
     </div>
 
     <!-- Chat Stream -->
@@ -255,24 +268,80 @@
   ───────────────────────────────────────────── -->
   <section class="tab-panel" id="tab-1" role="tabpanel">
     <div class="toolkit-grid">
+
+      <!-- Quadrant 1: Browser Automation (Browser-Use / Playwright) -->
       <div class="mission-card" data-accent="cyan">
         <div class="mc-glow" aria-hidden="true"></div>
         <div class="mc-header">
-          <div class="mc-icon-wrap cyan-icon">◈</div>
+          <div class="mc-icon-wrap cyan-icon">🌐</div>
           <div class="mc-info">
-            <div class="mc-title font-heading">VoiceMate Capabilities</div>
-            <div class="mc-desc font-bengali">শুধু অ্যাপ খোলা, voice typing, web search, local PDF/Word উত্তর এবং product price comparison</div>
+            <div class="mc-title font-heading">Browser Automation</div>
+            <div class="mc-desc font-bengali">Browser-Use 1.0 &amp; Playwright অটোনোমাস ওয়েব নেভিগেশন</div>
           </div>
-          <span class="mc-badge ready font-mono">5 FEATURES</span>
+          <span class="mc-badge ready font-mono" id="badge-browser">READY</span>
         </div>
         <div class="mc-actions">
-          <button class="mc-btn font-bengali" onclick="runToolkit('open_app','কোন অ্যাপ খুলবেন?')">📂 অ্যাপ খুলুন</button>
-          <button class="mc-btn font-bengali" onclick="quickAction('Typing Mode')">⌨️ ভয়েস টাইপিং</button>
-          <button class="mc-btn font-bengali" onclick="runToolkit('web_search','কী সার্চ করবেন?')">🔎 ওয়েবে সার্চ</button>
-          <button class="mc-btn font-bengali" onclick="runToolkit('document_qa','ডকুমেন্টের প্রশ্ন এবং চাইলে PDF/DOCX ফাইলের নাম দিন:')">📄 PDF/Word প্রশ্ন</button>
-          <button class="mc-btn font-bengali" onclick="runToolkit('product_price','কোন পণ্যের দাম জানতে চান?')">🏷️ পণ্যের দাম তুলনা</button>
+          <button class="mc-btn font-bengali" onclick="runToolkit('browser_agent','ব্রাউজারে গিয়ে এজেন্ট কি কাজ করবে লিখুন:')">🤖 Browser Agent (Browser-Use)</button>
+          <button class="mc-btn font-bengali" onclick="runToolkit('web_automation','Playwright অটোমেশন কমান্ড লিখুন:')">⚙️ Web Automation (Playwright)</button>
+          <button class="mc-btn font-bengali" onclick="runToolkit('web_automation','স্ক্রিনশট URL লিখুন:')">📸 Web Screenshot &amp; Scrape</button>
         </div>
       </div>
+
+      <!-- Quadrant 2: Document Intelligence (Assignment Solver & DOCX Builder) -->
+      <div class="mission-card" data-accent="violet">
+        <div class="mc-glow" aria-hidden="true"></div>
+        <div class="mc-header">
+          <div class="mc-icon-wrap violet-icon">📄</div>
+          <div class="mc-info">
+            <div class="mc-title font-heading">Document Intelligence</div>
+            <div class="mc-desc font-bengali">Assignment Solver, Docling ও DOCX ডকুমেন্ট বিল্ডার</div>
+          </div>
+          <span class="mc-badge ready font-mono" id="badge-doc">READY</span>
+        </div>
+        <div class="mc-actions">
+          <button class="mc-btn font-bengali" onclick="runToolkit('assignment_solver','অ্যাসাইনমেন্ট বিষয় বা PDF পাথ লিখুন:')">📝 Assignment Solver (DOCX Builder)</button>
+          <button class="mc-btn font-bengali" onclick="runToolkit('docling_converter','Docling কনভার্ট ফাইল পাথ লিখুন:')">🔄 Docling Multimodal Converter</button>
+          <button class="mc-btn font-bengali" onclick="runToolkit('doc_reader','পড়ার জন্য ডকুমেন্ট পাথ লিখুন:')">📖 PyMuPDF Document Reader</button>
+        </div>
+      </div>
+
+      <!-- Quadrant 3: Software Engineering (Website Builder, Aider, OpenHands) -->
+      <div class="mission-card" data-accent="emerald">
+        <div class="mc-glow" aria-hidden="true"></div>
+        <div class="mc-header">
+          <div class="mc-icon-wrap emerald-icon">💻</div>
+          <div class="mc-info">
+            <div class="mc-title font-heading">Software Engineering</div>
+            <div class="mc-desc font-bengali">Website Builder, Aider এআই কোডার ও OpenHands ক্যানভাস</div>
+          </div>
+          <span class="mc-badge ready font-mono" id="badge-se">READY</span>
+        </div>
+        <div class="mc-actions">
+          <button class="mc-btn font-bengali" onclick="runToolkit('website_builder','কী ধরনের ওয়েবসাইট তৈরি করতে চান লিখুন:')">🌍 Website Builder (Live Server)</button>
+          <button class="mc-btn font-bengali" onclick="runToolkit('ai_coder','কোডিং টাস্ক বা অডিট কমান্ড লিখুন:')">🤖 AI Coder (Aider Refactor)</button>
+          <button class="mc-btn font-bengali" onclick="runToolkit('developer_canvas','ক্যানভাস বা টার্মিনাল কমান্ড লিখুন:')">🎨 Developer Canvas (OpenHands)</button>
+        </div>
+      </div>
+
+      <!-- Quadrant 4: Enterprise & API (Product Comparator, n8n, FastAPI Gateway) -->
+      <div class="mission-card" data-accent="amber">
+        <div class="mc-glow" aria-hidden="true"></div>
+        <div class="mc-header">
+          <div class="mc-icon-wrap amber-icon">⚡</div>
+          <div class="mc-info">
+            <div class="mc-title font-heading">Enterprise &amp; API</div>
+            <div class="mc-desc font-bengali">Product Comparator, n8n ওয়ার্কফ্লো ও FastAPI গেটওয়ে</div>
+          </div>
+          <span class="mc-badge ready font-mono" id="badge-enterprise">READY</span>
+        </div>
+        <div class="mc-actions">
+          <button class="mc-btn font-bengali" onclick="runToolkit('product_research','কোন প্রোডাক্টের দাম যাচাই করতে চান লিখুন:')">🔍 Product Comparator (দারাজ/স্টারটেক)</button>
+          <button class="mc-btn font-bengali" onclick="runToolkit('n8n_workflow','n8n ওয়ার্কফ্লো টাস্ক লিখুন:')">🔗 n8n Workflow Automation</button>
+          <button class="mc-btn font-bengali" onclick="runToolkit('api_gateway','FastAPI কমান্ড লিখুন:')">🔌 FastAPI Gateway &amp; Swagger</button>
+          <button class="mc-btn font-bengali" onclick="runToolkit('langgraph_brain','LangGraph ব্রেইন কমান্ড লিখুন:')">🧠 LangGraph Brain Orchestrator</button>
+        </div>
+      </div>
+
     </div>
   </section>
 
@@ -303,44 +372,6 @@
   </section>
 
 </main>
-
-<!-- ═══════════════════════════════════════════════════════════
-     SETTINGS MODAL (Glassmorphic Neural Config)
-═══════════════════════════════════════════════════════════ -->
-<div id="settingsModal" class="modal-backdrop hidden" onclick="if(event.target===this)closeSettings()">
-  <div class="modal-card">
-    <div class="modal-header">
-      <h3 class="modal-title font-heading">⚙ Neural Core Settings</h3>
-      <button class="modal-close" onclick="closeSettings()">✕</button>
-    </div>
-    <div class="modal-body">
-      <div class="form-group">
-        <label class="form-label font-mono">LLM ENGINE MODE</label>
-        <select id="cfgProvider" class="form-control font-mono">
-          <option value="auto">Auto Hybrid (Local Ollama + Gemini Cloud)</option>
-          <option value="gemini">Gemini Cloud API</option>
-          <option value="ollama">Local Ollama Only</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label class="form-label font-mono">GEMINI API KEY</label>
-        <input id="cfgApiKey" type="password" class="form-control font-mono" placeholder="Leave blank to keep current key..." />
-        <small id="cfgKeyHint" class="form-hint font-mono"></small>
-      </div>
-      <div class="form-group">
-        <label class="form-label font-mono">SPEECH RECOGNITION LANGUAGE</label>
-        <select id="cfgLang" class="form-control font-bengali">
-          <option value="bn-BD">বাংলা (Bangladesh - bn-BD)</option>
-          <option value="en-US">English (United States - en-US)</option>
-        </select>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="tele-ctrl-btn font-mono" onclick="closeSettings()">Cancel</button>
-      <button class="modal-save-btn font-mono" onclick="saveSettings()">Save &amp; Apply</button>
-    </div>
-  </div>
-</div>
 
 <script src="app.js"></script>
 </body>

@@ -88,12 +88,6 @@ class CommandProcessor:
         """
         Main command parser and executor for the laptop agent.
         """
-        from src.intelligence.requested_feature_router import RequestedFeatureRouter
-        return RequestedFeatureRouter.process(command)
-
-    @classmethod
-    def _process_legacy_command(cls, command: str) -> str:
-        """Retained implementation for reference; no longer exposed to VoiceMate."""
         cmd = cls.convert_bengali_digits(command.lower().strip())
 
         # Greeting check
@@ -123,26 +117,19 @@ class CommandProcessor:
 
 
         # ২b. অ্যাসাইনমেন্ট সলভার এজেন্ট (Direct Assignment Routing)
-        assignment_core_kws = [
-            "অ্যাসাইনমেন্ট", "এসাইনমেন্ট", "assignment", "হোমওয়ার্ক", "homework",
-            "প্রশ্নপত্র", "question solve", "question answer", "পরীক্ষার প্রশ্ন",
-            "পড়াশোনা", "study help", "সলভ", "solve", "সমাধান"
+        assignment_kws = [
+            "অ্যাসাইনমেন্ট", "এসাইনমেন্ট", "assignment", "হোমওয়ার্ক", "homework", "প্রশ্নপত্র",
+            "সলভ", "solve", "সমাধান", "উত্তর", "answer", "প্রশ্নের উত্তর",
+            "question solve", "question answer", "পিডিএফ", "pdf",
+            "পরীক্ষার প্রশ্ন", "পড়াশোনা", "পড়া", "study help"
         ]
-        assignment_doc_kws = ["পিডিএফ", "pdf", "উত্তর", "answer", "পড়া"]
         assignment_action_kws = [
             "সলভ", "solve", "সমাধান", "উত্তর", "answer", "করো", "করে", "দাও",
             "বলো", "help", "লিখো", "write", "বানাও", "create", "তৈরি"
         ]
-        is_local_search_or_read = (
-            any(w in cmd for w in ["খুঁজে", "খুঁজো", "খুঁজুন", "find", "search", "সামারি", "summarize", "পড়ো", "পড়ো", "পড়ে", "পড়ে", "read"])
-            and not any(w in cmd for w in ["অ্যাসাইনমেন্ট", "এসাইনমেন্ট", "assignment", "হোমওয়ার্ক", "homework", "সলভ", "solve", "সমাধান"])
-        )
-        has_assignment_kw = any(kw in cmd for kw in assignment_core_kws) or (
-            any(kw in cmd for kw in assignment_doc_kws)
-            and any(w in cmd for w in ["সলভ", "solve", "সমাধান", "উত্তর", "answer", "অ্যাসাইনমেন্ট", "assignment", "হোমওয়ার্ক", "homework"])
-        )
+        has_assignment_kw = any(kw in cmd for kw in assignment_kws)
         has_assignment_action = any(kw in cmd for kw in assignment_action_kws)
-        if not is_local_search_or_read and has_assignment_kw and has_assignment_action:
+        if has_assignment_kw and has_assignment_action:
             task_clean = cmd
             for kw in ["অ্যাসাইনমেন্ট", "এসাইনমেন্ট", "assignment", "হোমওয়ার্ক", "homework"]:
                 task_clean = task_clean.replace(kw, "")
@@ -151,8 +138,8 @@ class CommandProcessor:
                 task_clean = cmd
             return f"ACTION_ASSIGNMENT_TASK|{task_clean}"
 
-        # ২c. অটোনোমাস অ্যাসাইনমেন্ট ও ডিপ রিসার্চ ওয়ার্কফ্লো
-        if any(w in cmd for w in ["assignment", "অ্যাসাইনমেন্ট", "রিসার্চ রিপোর্ট", "research report"]) and any(w in cmd for w in ["সলভ", "solve", "সমাধান", "docx", "pdf", "রিসার্চ", "report"]):
+        # ২c. অটোনোমাস মাল্টি-স্টেপ টাস্ক প্ল্যানার (Assignment, Website Development, Deep Research)
+        if any(w in cmd for w in ["assignment", "অ্যাসাইনমেন্ট", "website", "ওয়েবসাইট", "রিসার্চ রিপোর্ট", "research report"]) and any(w in cmd for w in ["বানিয়ে", "তৈরি", "build", "create", "সলভ", "solve", "সমাধান", "docx", "pdf", "রিসার্চ", "report"]):
             if cls._decision_engine is None:
                 from src.intelligence.decision_engine import HybridDecisionEngine
                 cls._decision_engine = HybridDecisionEngine()
@@ -211,15 +198,78 @@ class CommandProcessor:
                 task_clean = cmd
             return f"ACTION_PLAYWRIGHT_TASK|{task_clean}"
 
-        # ৯খ. লোকাল পিসি ফাইল সার্চ (Google সার্চে যাওয়ার আগে চেক)
-        local_file_nouns = ["ফাইল", "file", "পিডিএফ", "pdf", "docx", "ডকুমেন্ট", "document", "রিজিউম", "resume", "cv", "নোটস", "notes"]
-        local_file_verbs = ["খুঁজে দাও", "খুঁজো", "খুঁজুন", "দেখাও", "find", "search"]
-        if (
-            any(fn in cmd for fn in local_file_nouns)
-            and any(fv in cmd for fv in local_file_verbs)
-            and not any(w in cmd for w in ["google", "গুগল", "youtube", "ইউটিউব"])
-        ):
-            return f"ACTION_FIND_FILE|{command.strip()}"
+        # ৫. ওপেনহ্যান্ডস এজেন্ট ক্যানভাস ও ডেভেলপার অপারেশন (Powered by OpenHands)
+        canvas_kws = [
+            "ক্যানভাস খোলো", "ক্যানভাস চালু", "ওপেনহ্যান্ডস", "agent canvas", "open canvas",
+            "কোড অডিট", "কোড রিভিউ", "code review", "code audit", "সিনট্যাক্স চেক",
+            "গিট স্ট্যাটাস", "git status", "ফাইল ট্রি", "file tree", "প্রোজেক্ট স্ট্রাকচার",
+            "টার্মিনালে চালাও", "টার্মিনাল কমান্ড"
+        ]
+        if any(kw in cmd for kw in canvas_kws):
+            task_clean = cmd
+            for kw in ["ওপেনহ্যান্ডস", "ক্যানভাস"]:
+                task_clean = task_clean.replace(kw, "")
+            task_clean = task_clean.strip()
+            if not task_clean:
+                task_clean = cmd
+            return f"ACTION_CANVAS_TASK|{task_clean}"
+
+        # ৬. এআই পেয়ার প্রোগ্রামার ও কোড এডিটিং (Powered by Aider)
+        coder_kws = [
+            "রেপো ম্যাপ", "repo map", "কোড ম্যাপ", "কোড এডিট করো", "কোড এডিট",
+            "সার্চ রিপ্লেস", "search replace", "কোড রোলব্যাক", "কোড আনডু",
+            "code rollback", "aider", "এইডার"
+        ]
+        if any(kw in cmd for kw in coder_kws) or "<<<<<<< search" in cmd:
+            task_clean = cmd
+            for kw in ["এইডার", "aider"]:
+                task_clean = task_clean.replace(kw, "")
+            task_clean = task_clean.strip()
+            if not task_clean:
+                task_clean = cmd
+            return f"ACTION_CODER_TASK|{task_clean}"
+
+        # ৭. এনএইটেন ইউনিভার্সাল ওয়ার্কফ্লো অটোমেশন (Powered by n8n)
+        n8n_kws = [
+            "এনএইটেন", "n8n", "অটোমেশন ফ্লো", "ওয়ার্কফ্লো", "workflow", "ওয়েবহুক", "webhook",
+            "নোশনে পাঠাও", "গুগল শিটে সেভ", "স্ল্যাকে পাঠাও", "টেলিগ্রামে মেসেজ"
+        ]
+        if any(kw in cmd for kw in n8n_kws):
+            task_clean = cmd
+            for kw in ["এনএইটেন", "n8n"]:
+                task_clean = task_clean.replace(kw, "")
+            task_clean = task_clean.strip()
+            if not task_clean:
+                task_clean = cmd
+            return f"ACTION_N8N_TASK|{task_clean}"
+
+        # ৮. ফাস্টএপিআই গেটওয়ে ও ব্যাকএন্ড সার্ভার (Powered by FastAPI)
+        api_kws = [
+            "এপিআই সার্ভার", "api server", "ফাস্টএপিআই", "fastapi", "এপিআই চালু", "সার্ভার চালু",
+            "এপিআই ওপেন", "এপিআই ডক", "সোয়েগার ডক", "swagger doc", "এপিআই স্ট্যাটাস", "api docs", "api status"
+        ]
+        if any(kw in cmd for kw in api_kws):
+            task_clean = cmd
+            for kw in ["ফাস্টএপিআই", "fastapi", "এপিআই"]:
+                task_clean = task_clean.replace(kw, "")
+            task_clean = task_clean.strip()
+            if not task_clean:
+                task_clean = cmd
+            return f"ACTION_API_GATEWAY_TASK|{task_clean}"
+
+        # ৯. ল্যাংগ্রাফ মাল্টি-এজেন্ট ব্রেন ও স্টেট মেশিন (Powered by LangGraph)
+        brain_kws = [
+            "ল্যাংগ্রাফ", "langgraph", "মাল্টি এজেন্ট", "মাল্টি-এজেন্ট", "এজেন্ট ব্রেন",
+            "ব্রেন স্ট্যাটাস", "ব্রেন চালাও", "ব্রেন মেমোরি", "ব্রেন হিস্ট্রি", "গ্রাফ রান করো"
+        ]
+        if any(kw in cmd for kw in brain_kws):
+            task_clean = cmd
+            for kw in ["ল্যাংগ্রাফ", "langgraph", "ব্রেন"]:
+                task_clean = task_clean.replace(kw, "")
+            task_clean = task_clean.strip()
+            if not task_clean:
+                task_clean = cmd
+            return f"ACTION_BRAIN_TASK|{task_clean}"
 
         # ১০. সার্চ কমান্ড (গুগল ও ইউটিউব কুইক সার্চ)
         search_keywords = ["search", "সার্চ", "খুঁজো", "খুঁজুন", "দেখাও", "দেখবো", "খুঁজে দাও"]
@@ -416,8 +466,50 @@ class CommandProcessor:
         """
         Determines if an utterance is intended as an assistant command.
         """
-        from src.intelligence.requested_feature_router import RequestedFeatureRouter
-        return RequestedFeatureRouter.is_request_in_scope(command)
+        if not command or not command.strip():
+            return False
+
+        # Check with FastCommandRouter for natural variations (e.g. "I want to listen to Kamariya")
+        try:
+            from src.intelligence.fast_router import FastCommandRouter
+            if FastCommandRouter.match(command) is not None:
+                return True
+        except Exception:
+            pass
+
+        cmd = cls.convert_bengali_digits(command.lower().strip())
+        keywords = [
+            "কল", "call", "ফোন", "phone", "টাইপিং", "টাইপ", "typing", "উপরে", "up",
+            "নিচে", "down", "সার্চ", "search", "ওপেন", "open", "খুলো", "খোলো",
+            "বন্ধ", "stop", "exit", "close", "খুঁজো", "দেখাও", "দেখবো", "ইউটিউব",
+            "youtube", "গুগল", "google", "চার্জ", "battery", "ব্যাটারি", "সময়", "সময়",
+            "time", "তারিখ", "date", "ছবি", "ক্যামেরা", "camera", "ব্রাউজার", "browse",
+            "পিডিএফ", "pdf", "ডকুমেন্ট", "document", "প্লে", "play", "গান", "ভিডিও",
+            "স্ক্রিনশট", "screenshot", "অটোমেশন", "automation", "হোয়াটসঅ্যাপ", "whatsapp",
+            "ক্যানভাস", "canvas", "ওপেনহ্যান্ডস", "openhands", "অডিট", "audit", "রিভিউ",
+            "review", "গিট", "git", "ট্রি", "tree", "টার্মিনাল", "terminal",
+            "রেপো", "repo", "ম্যাপ", "map", "এডিট", "edit", "এইডার", "aider", "রোলব্যাক", "rollback",
+            "ডকলিং", "docling", "ওয়ার্ড", "docx", "পাওয়ারপয়েন্ট", "pptx", "এক্সেল", "xlsx", "চাংক", "chunk",
+            "এনএইটেন", "n8n", "ওয়ার্কফ্লো", "workflow", "ওয়েবহুক", "webhook", "নোশন", "notion",
+            "এপিআই", "api", "ফাস্টএপিআই", "fastapi", "সোয়েগার", "swagger",
+            "ল্যাংগ্রাফ", "langgraph", "মাল্টি-এজেন্ট", "ব্রেন", "brain", "গ্রাফ", "graph",
+            "মেসেজ", "এসএমএস", "sms", "চালাও", "বাজাও", "শোনাও", "ছাড়ো", "শুনবো", "সং", "song", "মিউজিক", "music",
+            "ল্যাপটপ", "laptop", "প্রাইস", "price", "কম্পেয়ার", "compare", "ফিচার", "features", "স্পেক", "specs",
+            "স্যামসাং", "samsung", "এইচপি", "hp", "টাকা", "taka", "বাজেট", "budget", "cheapest", "পণ্য", "product",
+            "অ্যাসাইনমেন্ট", "assignment", "সলভ", "solve", "সমাধান", "website", "ওয়েবসাইট", "বানিয়ে", "রিসার্চ", "research", "রিপোর্ট", "report"
+        ]
+
+        if any(kw in cmd for kw in keywords):
+            return True
+
+        digits = re.sub(r"[^0-9]", "", cmd)
+        if len(digits) == 11:
+            return True
+
+        if len(cmd.split()) <= 2:
+            return True
+
+        return False
 
     @staticmethod
     def is_greeting(command: str) -> bool:

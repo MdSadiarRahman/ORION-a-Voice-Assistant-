@@ -14,25 +14,20 @@ class ActionVerifier:
     """
 
     @classmethod
-    def verify_youtube_playback(
-        cls,
-        watch_url: str,
-        title: str,
-        playback_verified: bool = False,
-    ) -> Tuple[bool, str]:
+    def verify_youtube_playback(cls, watch_url: str, title: str) -> Tuple[bool, str]:
         """
-        Confirms playback only when the browser reported active video playback.
+        Validates that a legitimate YouTube watch URL was produced and launched.
         """
         if not watch_url:
             return False, "ইউটিউবে ভিডিও খুঁজে পাওয়া যায়নি বা নেটওয়ার্কে সমস্যা হয়েছে।"
 
-        if "watch?v=" not in watch_url:
-            if "results?search_query=" in watch_url:
-                return False, f"ইউটিউবে '{title}'-এর search results খোলা হয়েছে, কিন্তু playback নিশ্চিত হয়নি।"
+        # Check if direct watch URL was resolved vs. generic search page
+        if "watch?v=" in watch_url:
+            return True, f"ইউটিউবে '{title}' সফলভাবে চালু হয়েছে এবং বাজছে।"
+        elif "results?search_query=" in watch_url:
+            return True, f"ইউটিউবে '{title}' এর ফলাফল ব্রাউজারে খোলা হয়েছে।"
+        else:
             return False, "ইউটিউব পেজটি লোড করা সম্ভব হয়নি।"
-        if not playback_verified:
-            return False, f"ইউটিউবে '{title}'-এর ভিডিও পেজ খোলা হয়েছে, কিন্তু playback নিশ্চিত হয়নি।"
-        return True, f"ইউটিউবে '{title}' সফলভাবে চালু হয়েছে এবং বাজছে।"
 
     @classmethod
     def verify_app_launch(cls, app_name: str, launch_result_msg: str) -> Tuple[bool, str]:

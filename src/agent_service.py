@@ -11,7 +11,9 @@ from src.command_processor import CommandProcessor
 from src.helpers.tts_helper import TtsHelper
 from src.helpers.voice_recognizer_helper import VoiceRecognizerHelper
 from src.helpers.desktop_automation_helper import DesktopAutomationHelper
+from src.helpers.battery_helper import BatteryHelper
 from src.helpers.search_helper import SearchHelper
+from src.helpers.notification_helper import NotificationHelper
 from src.browser_agent.browser_task_runner import BrowserTaskRunner
 from src.document_agent.document_task_runner import DocumentTaskRunner
 from src.docling_agent.docling_task_runner import DoclingTaskRunner
@@ -19,7 +21,21 @@ try:
     from src.playwright_agent.playwright_task_runner import PlaywrightTaskRunner
 except ImportError:
     PlaywrightTaskRunner = None
+from src.n8n_agent.n8n_task_runner import N8nTaskRunner
+from src.api_gateway.api_task_runner import APITaskRunner
+from src.agent_brain.brain_task_runner import BrainTaskRunner
 from src.assignment_agent.assignment_controller import AssignmentController
+
+# Optional agents (may not be installed)
+try:
+    from src.canvas_agent.canvas_task_runner import CanvasTaskRunner
+except ImportError:
+    CanvasTaskRunner = None
+
+try:
+    from src.coder_agent.coder_task_runner import CoderTaskRunner
+except ImportError:
+    CoderTaskRunner = None
 
 class AgentService:
     _instance: Optional['AgentService'] = None
@@ -32,11 +48,14 @@ class AgentService:
         self.is_listening = False
         self.is_speaking = False
         self.is_typing_mode = False
-        self._voice_muted = False
         self.is_waiting_for_search = False
         self.search_target = ""
         self._recent_spoken_phrases: list[tuple[float, str]] = []
         self._last_tts_end_time: float = 0.0
+
+        # Intelligence & Decision Engine
+        from src.intelligence.decision_engine import HybridDecisionEngine
+        self.decision_engine = HybridDecisionEngine()
 
         # Helpers
         self.tts = TtsHelper(
@@ -109,9 +128,10 @@ class AgentService:
         if self.is_running:
             return
         self.is_running = True
-        self._voice_muted = False
-        self.is_listening = True
         self.speak("ভয়েস মেট সক্রিয় আছে। আমি আপনার কথা শুনছি...", start_listening_after=True)
+        
+        # Start battery monitoring
+        BatteryHelper.start_monitoring(self.speak, interval_seconds=60)
         
         # Start microphone speech recognizer
         self.recognizer.start_listening()
@@ -119,32 +139,12 @@ class AgentService:
 
     def stop(self):
         """Stops the voice agent service."""
-        self._voice_muted = False
         self.is_running = False
         self.is_listening = False
         self.recognizer.stop_listening()
+        BatteryHelper.stop_monitoring()
         self.tts.shutdown()
         self._notify_state("অ্যাসিস্ট্যান্ট বন্ধ করা হয়েছে")
-
-    def toggle_voice(self) -> bool:
-        """Toggles active microphone speech listening on or off."""
-        if not self.is_running:
-            self.start()
-            return bool(self.is_running and not self._voice_muted and self.recognizer.is_listening)
-        currently_active = (not self._voice_muted) and (
-            self.is_listening or self.is_speaking or self.recognizer.is_listening
-        )
-        if currently_active:
-            self._voice_muted = True
-            self.recognizer.stop_listening()
-            self.is_listening = False
-            self._notify_state("মাইক্রোফোন মিউট করা হয়েছে (টাইপ করে কমান্ড দিন)")
-            return False
-        self._voice_muted = False
-        self.recognizer.start_listening()
-        self.is_listening = bool(self.recognizer.is_listening)
-        self._notify_state("আমি শুনছি...")
-        return self.is_listening
 
     def _on_tts_start(self):
         self.is_speaking = True
@@ -154,12 +154,12 @@ class AgentService:
     def _on_tts_done(self):
         self.is_speaking = False
         self._last_tts_end_time = time.time()
-        if self.is_running and not self._voice_muted:
+        if self.is_running:
             self.is_listening = True
             self._notify_state("আমি শুনছি...")
 
     def _on_speech_ready(self):
-        if self.is_running and not self.is_speaking and not self._voice_muted:
+        if self.is_running and not self.is_speaking:
             self.is_listening = True
             status_text = "আমি লিখছি... বলুন" if self.is_typing_mode else "আমি শুনছি..."
             self._notify_state(status_text)
@@ -188,25 +188,59 @@ class AgentService:
 
         # ১. টাইপিং মোড সক্রিয় থাকলে
         if self.is_typing_mode:
-            stop_typing_commands = {
-                "বন্ধ",
-                "টাইপিং বন্ধ",
-                "টাইপিং বন্ধ করো",
-                "টাইপিং মোড বন্ধ",
-                "টাইপিং মোড বন্ধ করুন",
-                "টাইপিং মোড বন্ধ করো",
-                "টাইপিং মোড অফ",
-                "stop typing",
-                "stop typing mode",
-                "typing mode off",
-                "exit typing mode",
-            }
-            if spoken_lower.strip(" .,!?:;।") in stop_typing_commands:
+            # ১ক. সব লেখা মুছে ফেলা (Clear all)
+            clear_all_kws = [
+                "সব মুছো", "সব মুছে ফেলো", "সব ডিলিট", "সব কাটো", "ক্লিয়ার করো",
+                "ক্লিয়ার করো", "clear all", "delete all"
+            ]
+            if any(kw in spoken_lower for kw in clear_all_kws):
+                DesktopAutomationHelper.clear_all_text()
+                self.speak("সব লেখা মুছে ফেলা হয়েছে।", start_listening_after=True)
+                return
+
+            # ১খ. শেষের বাক্য / লাইন / অংশ মুছে ফেলা (Undo last pasted sentence)
+            undo_kws = [
+                "বাক্য মুছো", "বাক্য কাটো", "সেন্টেন্স মুছো", "সেন্টেন্স ডিলিট", "লাইন মুছো",
+                "আগেরটা মুছো", "শেষেরটা মুছো", "আনডু", "undo", "delete sentence",
+                "delete line", "delete last sentence", "sentence delete"
+            ]
+            if any(kw in spoken_lower for kw in undo_kws):
+                DesktopAutomationHelper.undo_last()
+                self.speak("শেষের বাক্যটি মুছে ফেলা হয়েছে।", start_listening_after=True)
+                return
+
+            # ১গ. শেষের শব্দ মুছে ফেলা (Delete word)
+            del_word_kws = [
+                "শব্দ মুছো", "শব্দ কাটো", "শব্দ ডিলিট", "মুছে ফেলো", "মুছো",
+                "ব্যাকস্পেস", "backspace", "delete word", "word delete", "delete that"
+            ]
+            if any(kw in spoken_lower for kw in del_word_kws) or spoken_lower in ["delete", "ডিলিট"]:
+                count_match = re.search(r"\d+", CommandProcessor.convert_bengali_digits(spoken_lower))
+                word_count = int(count_match.group()) if count_match else 1
+                DesktopAutomationHelper.delete_last_word(min(word_count, 20))
+                self.speak("মুছে ফেলা হয়েছে।", start_listening_after=True)
+                return
+
+            if any(w in spoken_lower for w in ["বন্ধ", "কাটো", "exit", "stop typing"]):
                 self.is_typing_mode = False
                 self.speak("টাইপিং মোড বন্ধ করা হয়েছে।", start_listening_after=True)
                 return
-            DesktopAutomationHelper.append_text(f"{spoken_text.strip()} ")
-            return
+
+            if spoken_lower in ["পাঠাও", "send"]:
+                DesktopAutomationHelper.click_send()
+                self.speak("মেসেজ পাঠানো হয়েছে", start_listening_after=True)
+                return
+            else:
+                should_send = spoken_lower.endswith(" পাঠাও") or spoken_lower.endswith(" send")
+                text_to_type = spoken_text.strip()
+                if should_send:
+                    text_to_type = re.sub(r"\s+(পাঠাও|send)$", "", text_to_type, flags=re.IGNORECASE).strip()
+                if text_to_type:
+                    DesktopAutomationHelper.append_text(text_to_type if should_send else f"{text_to_type} ")
+                if should_send:
+                    DesktopAutomationHelper.click_send()
+                    self.speak("পাঠানো হয়েছে", start_listening_after=True)
+                return
 
         # ২. সার্চ কুয়েরি উত্তরের অপেক্ষায় থাকলে
         if self.is_waiting_for_search:
@@ -219,64 +253,7 @@ class AgentService:
         if response == "ACTION_START_TYPING":
             self.is_typing_mode = True
             DesktopAutomationHelper.focus_and_open_keyboard()
-            self.speak(
-                "টাইপিং মোড চালু হয়েছে। যে অ্যাপে লিখবেন সেখানে আগে লেখার ঘরে ক্লিক করুন; "
-                "এখন আপনার বলা কথা সেখানে লেখা হবে। বন্ধ করতে 'টাইপিং বন্ধ' বলুন।",
-                start_listening_after=True,
-            )
-            return
-
-        if response.startswith("ACTION_DOCUMENT_QA|"):
-            document_query = response.split("|", 1)[1].strip()
-            self.speak("আমি local PDF/Word ফাইল খুঁজে প্রশ্নের উত্তর বের করছি...", start_listening_after=False)
-
-            def on_document_progress(message: str):
-                self._notify_state(message)
-
-            def run_document_answer():
-                try:
-                    from src.document_intelligence.document_answer_service import DocumentAnswerService
-
-                    result = DocumentAnswerService.answer(
-                        document_query,
-                        progress_cb=on_document_progress,
-                    )
-                except (ImportError, OSError, RuntimeError, ValueError) as exc:
-                    result = f"ডকুমেন্টের উত্তর তৈরি করা যায়নি: {exc}"
-                self._notify_state(result)
-                summary = re.split(r"(?<=[.!?।])\s|\n", result, maxsplit=1)[0]
-                self.speak(summary, start_listening_after=True)
-
-            threading.Thread(target=run_document_answer, daemon=True).start()
-            return
-
-        if response.startswith("ACTION_PRODUCT_PRICE|"):
-            product_query = response.split("|", 1)[1].strip()
-            self.speak("একাধিক retailer-এর live listing পরীক্ষা করছি...", start_listening_after=False)
-
-            def run_product_price_search():
-                try:
-                    from src.product_agent.product_price_search import ProductPriceSearch
-
-                    result = ProductPriceSearch.search(product_query)
-                    message = result.get("message", "পণ্যের দাম পাওয়া যায়নি।")
-                except (OSError, RuntimeError, ValueError) as exc:
-                    message = f"পণ্যের দাম খোঁজা যায়নি: {exc}"
-                self._notify_state(message)
-                self.speak(message.splitlines()[0], start_listening_after=True)
-
-            threading.Thread(target=run_product_price_search, daemon=True).start()
-            return
-
-        if response.startswith("PROMPT_SEARCH|"):
-            parts = response.split("|", 2)
-            self.search_target = parts[1] if len(parts) > 1 else "google"
-            self.is_waiting_for_search = True
-            self.speak(parts[2] if len(parts) > 2 else "কী সার্চ করব?", start_listening_after=True)
-            return
-
-        if response == "UNKNOWN_COMMAND" or response.startswith("ACTION_"):
-            self.speak("এই কমান্ডটি সমর্থিত নয়।", start_listening_after=True)
+            self.speak("টাইপিং মোড চালু হয়েছে। কি লিখবো বলুন?", start_listening_after=True)
             return
 
         # অ্যাসাইনমেন্ট এজেন্ট টাস্ক (Assignment Solver)
@@ -361,9 +338,6 @@ class AgentService:
 
         # ডিটারমিনিস্টিক ওয়েব অটোমেশন (Playwright) টাস্ক
         if response.startswith("ACTION_PLAYWRIGHT_TASK|"):
-            if PlaywrightTaskRunner is None:
-                self.speak("দুঃখিত, ওয়েব অটোমেশন এজেন্ট বর্তমানে উপলব্ধ নেই।", start_listening_after=True)
-                return
             pw_task = response.split("|", 1)[1].strip()
             self.speak("আমি ওয়েব অটোমেশনের কাজটি শুরু করছি, অপেক্ষা করুন...", start_listening_after=False)
 
@@ -382,12 +356,110 @@ class AgentService:
             )
             return
 
-        if response.startswith("ACTION_FIND_FILE|"):
-            find_query = response.split("|", 1)[1].strip()
-            from src.intelligence.tool_registry import ToolRegistry
-            tr = ToolRegistry()
-            tool_res = tr.execute("SEARCH_LOCAL_FILE", query=find_query)
-            self.speak(tool_res.get("reply", "ফাইল অনুসন্ধান সম্পন্ন হয়েছে।"), start_listening_after=True)
+        # ওপেনহ্যান্ডস ডেভেলপার ক্যানভাস টাস্ক
+        if response.startswith("ACTION_CANVAS_TASK|"):
+            if CanvasTaskRunner is None:
+                self.speak("দুঃখিত, ক্যানভাস এজেন্ট বর্তমানে উপলব্ধ নেই।", start_listening_after=True)
+                return
+            canvas_task = response.split("|", 1)[1].strip()
+            self.speak("আমি ডেভেলপার ক্যানভাস টাস্ক শুরু করছি, অনুগ্রহ করে অপেক্ষা করুন...", start_listening_after=False)
+
+            def on_canvas_progress(msg: str):
+                self._notify_state(msg)
+
+            def on_canvas_finish(result_msg: str):
+                self._notify_state(result_msg)
+                summary = result_msg.split("\n")[0]
+                self.speak(summary, start_listening_after=True)
+
+            CanvasTaskRunner.run_task(
+                task_query=canvas_task,
+                on_progress=on_canvas_progress,
+                on_finish=on_canvas_finish
+            )
+            return
+
+        # এইডার এআই কোডার ও এডিটিং টাস্ক
+        if response.startswith("ACTION_CODER_TASK|"):
+            if CoderTaskRunner is None:
+                self.speak("দুঃখিত, কোডার এজেন্ট বর্তমানে উপলব্ধ নেই।", start_listening_after=True)
+                return
+            coder_task = response.split("|", 1)[1].strip()
+            self.speak("আমি কোডার টাস্ক শুরু করছি, অপেক্ষা করুন...", start_listening_after=False)
+
+            def on_coder_progress(msg: str):
+                self._notify_state(msg)
+
+            def on_coder_finish(result_msg: str):
+                self._notify_state(result_msg)
+                summary = result_msg.split("\n")[0]
+                self.speak(summary, start_listening_after=True)
+
+            CoderTaskRunner.run_task(
+                task_query=coder_task,
+                on_progress=on_coder_progress,
+                on_finish=on_coder_finish
+            )
+            return
+
+        # এনএইটেন ইউনিভার্সাল ওয়ার্কফ্লো অটোমেশন টাস্ক
+        if response.startswith("ACTION_N8N_TASK|"):
+            n8n_task = response.split("|", 1)[1].strip()
+            self.speak("আমি এনএইটেন অটোমেশন শুরু করছি, অপেক্ষা করুন...", start_listening_after=False)
+
+            def on_n8n_progress(msg: str):
+                self._notify_state(msg)
+
+            def on_n8n_finish(result_msg: str):
+                self._notify_state(result_msg)
+                summary = result_msg.split("\n")[0]
+                self.speak(summary, start_listening_after=True)
+
+            N8nTaskRunner.run_task(
+                task_query=n8n_task,
+                on_progress=on_n8n_progress,
+                on_finish=on_n8n_finish
+            )
+            return
+
+        # ফাস্টএপিআই গেটওয়ে ও ব্যাকএন্ড সার্ভার টাস্ক
+        if response.startswith("ACTION_API_GATEWAY_TASK|"):
+            api_task = response.split("|", 1)[1].strip()
+            self.speak("আমি এপিআই গেটওয়ে প্রসেস করছি, অপেক্ষা করুন...", start_listening_after=False)
+
+            def on_api_progress(msg: str):
+                self._notify_state(msg)
+
+            def on_api_finish(result_msg: str):
+                self._notify_state(result_msg)
+                summary = result_msg.split("\n")[0]
+                self.speak(summary, start_listening_after=True)
+
+            APITaskRunner.run_task(
+                task_query=api_task,
+                on_progress=on_api_progress,
+                on_finish=on_api_finish
+            )
+            return
+
+        # ল্যাংগ্রাফ মাল্টি-এজেন্ট ব্রেন টাস্ক
+        if response.startswith("ACTION_BRAIN_TASK|"):
+            brain_task = response.split("|", 1)[1].strip()
+            self.speak("আমি ল্যাংগ্রাফ ব্রেন দিয়ে প্রসেস করছি, অপেক্ষা করুন...", start_listening_after=False)
+
+            def on_brain_progress(msg: str):
+                self._notify_state(msg)
+
+            def on_brain_finish(result_msg: str):
+                self._notify_state(result_msg)
+                summary = result_msg.split("\n")[0]
+                self.speak(summary, start_listening_after=True)
+
+            BrainTaskRunner.run_task(
+                task_query=brain_task,
+                on_progress=on_brain_progress,
+                on_finish=on_brain_finish
+            )
             return
 
         if response.startswith("PROMPT_SEARCH|"):
@@ -398,7 +470,6 @@ class AgentService:
             return
 
         if response != "UNKNOWN_COMMAND":
-            self._notify_state(response)
             self.speak(response, start_listening_after=True)
             return
         else:
@@ -442,9 +513,21 @@ class AgentService:
         target = self.search_target
         self.search_target = ""
 
+        q_lower = query.lower()
+        is_play = any(w in q_lower for w in ["প্লে", "play", "চালাও", "বাজাও", "গান", "সং", "song", "ভিডিও"])
+
         if target == "youtube":
-            SearchHelper.search_in_youtube(query)
-            self.speak(f"আমি ইউটিউবে {query} সার্চ করছি।", start_listening_after=True)
+            if is_play:
+                clean_q = query
+                for w in ["একটি গান প্লে করো", "গান প্লে করো", "প্লে করো", "চালাও", "বাজাও", "প্লে", "play"]:
+                    clean_q = clean_q.replace(w, "").strip()
+                if not clean_q:
+                    clean_q = query
+                success, title, msg, watch_url = SearchHelper.play_youtube_song(clean_q)
+                self.speak(f"ইউটিউবে '{title}' প্লে করা হচ্ছে।", start_listening_after=True)
+            else:
+                SearchHelper.search_in_youtube(query)
+                self.speak(f"আমি ইউটিউবে {query} সার্চ করছি।", start_listening_after=True)
         else:
             SearchHelper.search_in_google(query)
             self.speak(f"আমি গুগলে {query} সার্চ করছি।", start_listening_after=True)

@@ -58,11 +58,8 @@ class AssignmentController:
                     # Also check 1-level subdirectories for organized folders
                     candidates.extend(d.glob(f"*/*{ext}"))
 
-        # Deduplicate, ignore previously generated *_solution_* artifacts, and sort by most recently modified
-        unique_candidates = list({
-            c.resolve(): c for c in candidates
-            if c.is_file() and "_solution_" not in c.stem.lower()
-        }.values())
+        # Deduplicate and sort by most recently modified
+        unique_candidates = list({c.resolve(): c for c in candidates if c.is_file()}.values())
         unique_candidates.sort(key=lambda c: c.stat().st_mtime, reverse=True)
 
         # Match by filename or keywords in query
@@ -101,28 +98,11 @@ class AssignmentController:
         path = cls.resolve_assignment_path(filepath_str)
         text_content = ""
 
-        # Read via PyMuPDF if PDF (with OCR fallback for scanned PDFs)
+        # Read via PyMuPDF if PDF
         if path.suffix.lower() == ".pdf" and PyMuPDFReader.is_available():
             try:
                 res = PyMuPDFReader.extract_text_and_markdown(str(path))
                 text_content = res.get("plain_text", "")
-                if len(re.sub(r"---\s*Page\s*\d+\s*---|\s+", "", text_content)) < 40:
-                    ocr_pages = []
-                    for page_idx in range(3):
-                        ocr_txt = PyMuPDFReader.ocr_scanned_page(str(path), page_number=page_idx)
-                        if not ocr_txt or not ocr_txt.strip():
-                            try:
-                                from src.helpers.vision_helper import VisionHelper
-                                img_p = PyMuPDFReader.render_page_preview(str(path), page_number=page_idx)
-                                ocr_txt = VisionHelper.recognize_text(img_p)
-                                if "খুঁজে পাওয়া যায়নি" in ocr_txt:
-                                    ocr_txt = ""
-                            except Exception:
-                                ocr_txt = ""
-                        if ocr_txt and ocr_txt.strip():
-                            ocr_pages.append(ocr_txt.strip())
-                    if ocr_pages:
-                        text_content = "\n\n".join(ocr_pages)
             except Exception:
                 pass
 
@@ -181,70 +161,52 @@ class AssignmentController:
             "filename": path.name,
             "total_questions": len(questions),
             "questions": questions,
-            "raw_text_preview": text_content[:8000]
+            "raw_text_preview": text_content[:300]
         }
 
     @classmethod
-    def _solve_with_gemini(cls, question_text: str, document_context: str, gemini_client=None) -> Optional[str]:
-        """Uses Gemini REST API (or local Ollama fallback) to generate an accurate, detailed solution."""
-        prompt = (
-            "You are an expert academic tutor. Read the following assignment question and "
-            "document context, then provide a clear, accurate, step-by-step solution. "
-            "Write the explanation clearly (in Bengali if the user/context is Bengali, or in English with a concise Bengali summary).\n\n"
-            f"Document Context (excerpt):\n{document_context[:6000]}\n\n"
-            f"Question:\n{question_text}\n\n"
-            "Provide a well-structured, complete answer:"
-        )
+    def _solve_with_gemini(cls, question_text: str, document_context: str) -> Optional[str]:
+        """Uses Gemini API to generate an accurate, detailed answer for a question."""
+        api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+        if not api_key:
+            return None
         try:
-            from src.intelligence.gemini_client import GeminiClient
-            gc = gemini_client or GeminiClient(timeout_seconds=15.0)
-            if gc.is_available():
-                text = gc.generate_text(
-                    prompt=prompt,
-                    system_prompt="You are an expert academic tutor producing clear, thorough assignment solutions.",
-                    temperature=0.3,
-                )
-                if text:
-                    return text
+            import google.generativeai as genai
+            genai.configure(api_key=api_key)
+            model = genai.GenerativeModel("gemini-2.5-flash")
+            prompt = (
+                "You are an expert academic tutor. Read the following assignment question and "
+                "document context, then provide a clear, accurate, step-by-step solution. "
+                "Write the explanation clearly (in Bengali if the user/context is Bengali, or in English with Bengali summary if appropriate).\n\n"
+                f"Document Context (excerpt):\n{document_context[:3000]}\n\n"
+                f"Question:\n{question_text}\n\n"
+                "Provide a well-structured, complete answer:"
+            )
+            response = model.generate_content(prompt)
+            text = (response.text or "").strip()
+            return text if text else None
         except Exception:
-            pass
-
-        try:
-            from src.intelligence.ollama_client import OllamaClient
-            oc = OllamaClient(timeout_seconds=20.0)
-            if oc.is_available():
-                res = oc.analyze_query(f"Answer clearly in academic style: {question_text}")
-                if res and res.get("reply"):
-                    return str(res["reply"])
-        except Exception:
-            pass
-
-        return None
+            return None
 
     @classmethod
     def generate_solutions(cls, parsed_data: Dict[str, Any]) -> List[Dict[str, Any]]:
         """
-        Drafts step-by-step educational explanations and answers for each question
-        in parallel using Gemini LLM when available, with a structured fallback.
+        Drafts step-by-step educational explanations and answers for each question,
+        using Gemini LLM when available, with a structured fallback.
         """
-        from concurrent.futures import ThreadPoolExecutor
-        from src.intelligence.gemini_client import GeminiClient
-
+        solutions = []
         doc_context = parsed_data.get("raw_text_preview", "")
-        questions = parsed_data.get("questions", [])
-        shared_gc = GeminiClient(timeout_seconds=15.0)
-
-        def _solve_one(q: Dict[str, Any]) -> Dict[str, Any]:
+        for q in parsed_data.get("questions", []):
             num = q["question_number"]
             q_text = q["question_text"]
             topic = q["topic"]
 
-            llm_answer = cls._solve_with_gemini(q_text, doc_context, gemini_client=shared_gc)
+            llm_answer = cls._solve_with_gemini(q_text, doc_context)
             if llm_answer:
                 explanation = llm_answer
-                sources_summary = [f"Generated via Gemini AI ({shared_gc.get_active_model_display()})"]
+                sources_summary = ["Generated via Gemini AI Tutor"]
             else:
-                sources_summary = ["Local Offline Template (LLM unavailable)"]
+                sources_summary = ["Local Offline Template (GEMINI_API_KEY not configured)"]
                 explanation = (
                     f"**প্রশ্ন:** {q_text}\n\n"
                     f"**মূল ধারণা ও সংজ্ঞা:** {topic} হলো আধুনিক কম্পিউটার বিজ্ঞানের একটি গুরুত্বপূর্ণ ক্ষেত্র। "
@@ -255,7 +217,7 @@ class AssignmentController:
                     f"৩. বাস্তব প্রয়োগ: স্বাস্থ্যসেবা, সাইবার সিকিউরিটি এবং রোবটিক্স অটোমেশনে বহুল ব্যবহৃত।"
                 )
 
-            return {
+            solutions.append({
                 "question_number": num,
                 "question": q_text,
                 "topic": topic,
@@ -265,12 +227,9 @@ class AssignmentController:
                     "উত্তরের সাথে বাস্তবসম্মত উদাহরণ ও রেফারেন্স অন্তর্ভুক্ত করা হয়েছে।"
                 ],
                 "references": sources_summary
-            }
+            })
 
-        if len(questions) > 1 and shared_gc.is_available():
-            with ThreadPoolExecutor(max_workers=min(4, len(questions))) as pool:
-                return list(pool.map(_solve_one, questions))
-        return [_solve_one(q) for q in questions]
+        return solutions
 
     @classmethod
     def export_solution_document(
